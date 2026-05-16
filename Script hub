@@ -1,0 +1,554 @@
+--[[
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SCRIPT HUB  —  Client-Side                               ║
+║                                                                              ║
+║  ── ADDING SCRIPTS ────────────────────────────────────────────────────── ║
+║                                                                              ║
+║  Find the SCRIPTS table below and add an entry:                             ║
+║                                                                              ║
+║    {                                                                         ║
+║        name    = "Script Name",      -- button label                        ║
+║        desc    = "Short description",                                        ║
+║        url     = "https://...",      -- loadstring URL                       ║
+║        -- Optional: rig command suffix (for rig loader buttons)             ║
+║        rigCmd  = "starglitcher",     -- the part after -gh                  ║
+║    },                                                                        ║
+║                                                                              ║
+║  ── RIG LOADER ─────────────────────────────────────────────────────────── ║
+║                                                                              ║
+║  Rig loader buttons only appear in games made by group ID 34901800.         ║
+║  They auto-send two chat messages:                                           ║
+║    1)  -gh <rigCmd>         (immediately)                                   ║
+║    2)  -sh                  (0.2 seconds later)                             ║
+║                                                                              ║
+║  If a script has no rigCmd field it will not get a rig loader button.       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+--]]
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  CONFIGURATION
+-- ════════════════════════════════════════════════════════════════════════════
+
+local RIG_LOADER_GROUP_ID = 34901800  -- only show rig buttons in this group's games
+local RIG_CMD_DELAY       = 0.2       -- seconds between the two rig chat messages
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  ███████╗ ██████╗██████╗ ██╗██████╗ ████████╗███████╗
+--  ██╔════╝██╔════╝██╔══██╗██║██╔══██╗╚══██╔══╝██╔════╝
+--  ███████╗██║     ██████╔╝██║██████╔╝   ██║   ███████╗
+--  ╚════██║██║     ██╔══██╗██║██╔═══╝    ██║   ╚════██║
+--  ███████║╚██████╗██║  ██║██║██║        ██║   ███████║
+--  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   ╚══════╝
+-- ════════════════════════════════════════════════════════════════════════════
+--
+--  Add as many entries as you want. The GUI auto-scales.
+--  Fields:
+--    name    (string)  — displayed on the load button
+--    desc    (string)  — small description shown under the name
+--    url     (string)  — loadstring-able raw URL
+--    rigCmd  (string, optional)  — suffix for  -gh <rigCmd>
+--                                  leave nil / omit for no rig button
+--
+-- ════════════════════════════════════════════════════════════════════════════
+
+local SCRIPTS = {
+
+    -- ── 1. Star Glitcher ─────────────────────────────────────────────────────
+    {
+        name   = "Star Glitcher",
+        desc   = "FE star glitcher script",
+        url    = "https://raw.githubusercontent.com/bayly098764321/Hat-FE/refs/heads/main/StarGlitcher.lua",
+        rigCmd = "5316539421 5316549755 140395948277978 138364679836274 102599402682100 90960046381276 82942681251131 4932728913 5699795428 5316479641",
+    },
+
+    -- ── 2. Example Script 2 ───────────────────────────────────────────────────
+    --  Replace url with your actual script URL
+    {
+        name   = "My Reanimation ( Private",
+        desc   = "FE Custom reanimate script",
+        url    = "https://example.com/earthquake.lua",
+        rigCmd = "5316539421 5316549755 140395948277978 138364679836274 102599402682100 90960046381276 82942681251131 4932728913 5699795428 5316479641",
+    }
+
+    -- ── 4. Add more below in the same format ──────────────────────────────────
+    -- {
+    --     name   = "My Script",
+    --     desc   = "Does something cool",
+    --     url    = "https://raw.githubusercontent.com/.../script.lua",
+    --     rigCmd = "myrig",   -- remove line if no rig needed
+    -- },
+
+}   -- ← end of SCRIPTS table
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  SERVICES
+-- ════════════════════════════════════════════════════════════════════════════
+
+local Players          = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService     = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local StarterGui       = game:GetService("StarterGui")
+
+local lp   = Players.LocalPlayer
+local pgui = lp:WaitForChild("PlayerGui")
+local cam  = workspace.CurrentCamera
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  HELPERS
+-- ════════════════════════════════════════════════════════════════════════════
+
+local function notify(title, body, dur)
+    StarterGui:SetCore("SendNotification", {
+        Title    = title,
+        Text     = body,
+        Duration = dur or 3,
+    })
+end
+
+-- Send a chat message
+local function sendChat(msg)
+    pcall(function()
+        game:GetService("ReplicatedStorage")
+            .DefaultChatSystemChatEvents
+            .SayMessageRequest:FireServer(msg, "All")
+    end)
+end
+
+-- Load and execute a script from a URL
+local function loadScript(url, name)
+    local ok, result = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not ok or not result then
+        notify("Hub Error", "Failed to fetch: "..name, 5)
+        return
+    end
+    local fn, err = loadstring(result)
+    if not fn then
+        notify("Hub Error", "Syntax error in "..name..": "..(err or "?"), 5)
+        return
+    end
+    local ok2, err2 = pcall(fn)
+    if not ok2 then
+        notify("Hub Error", "Runtime error in "..name..": "..(tostring(err2):sub(1,60)), 5)
+    end
+end
+
+-- Check if the current game is owned by the rig-loader group
+local function isRigLoaderGame()
+    local ok, info = pcall(function()
+        return MarketplaceService:GetProductInfo(game.PlaceId)
+    end)
+    -- GetProductInfo doesn't give group ownership; use game.CreatorId + CreatorType
+    if game.CreatorType == Enum.CreatorType.Group then
+        return game.CreatorId == RIG_LOADER_GROUP_ID
+    end
+    return false
+end
+
+local RIG_GAME = isRigLoaderGame()
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  THEME
+-- ════════════════════════════════════════════════════════════════════════════
+
+local TH = {
+    BG       = Color3.fromHex("#0a0a10"),
+    Panel    = Color3.fromHex("#12121c"),
+    Card     = Color3.fromHex("#191925"),
+    CardHov  = Color3.fromHex("#20202e"),
+    Accent   = Color3.fromHex("#7c6dfa"),
+    AccentLo = Color3.fromHex("#2e2860"),
+    AccentHi = Color3.fromHex("#a393ff"),
+    Rig      = Color3.fromHex("#f59e0b"),  -- amber for rig buttons
+    RigLo    = Color3.fromHex("#4a3000"),
+    Border   = Color3.fromHex("#252535"),
+    TextPri  = Color3.fromHex("#e8e8f5"),
+    TextSec  = Color3.fromHex("#6868a0"),
+    TextDis  = Color3.fromHex("#383850"),
+    Green    = Color3.fromHex("#4ade80"),
+    Red      = Color3.fromHex("#f87171"),
+}
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  GUI BUILDER HELPERS
+-- ════════════════════════════════════════════════════════════════════════════
+
+local function corner(p, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 6)
+    c.Parent = p
+end
+
+local function stroke(p, col, thick)
+    local s = Instance.new("UIStroke")
+    s.Color     = col   or TH.Border
+    s.Thickness = thick or 1
+    s.Parent    = p
+end
+
+local function pad(p, px, py)
+    local pd = Instance.new("UIPadding")
+    pd.PaddingLeft   = UDim.new(0, px)
+    pd.PaddingRight  = UDim.new(0, px)
+    pd.PaddingTop    = UDim.new(0, py or px)
+    pd.PaddingBottom = UDim.new(0, py or px)
+    pd.Parent        = p
+end
+
+local function mkF(parent, col, size, pos, name, r, zi)
+    local f = Instance.new("Frame")
+    f.BackgroundColor3 = col  or TH.Panel
+    f.BorderSizePixel  = 0
+    f.Size             = size or UDim2.new(1,0,1,0)
+    f.Position         = pos  or UDim2.new(0,0,0,0)
+    f.Name             = name or "F"
+    f.ZIndex           = zi   or 1
+    if r then corner(f, r) end
+    f.Parent = parent
+    return f
+end
+
+local function mkL(parent, text, col, font, tsz, size, pos, xa, name, zi, wrap)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Text           = text  or ""
+    l.TextColor3     = col   or TH.TextPri
+    l.Font           = font  or Enum.Font.GothamMedium
+    l.TextSize       = tsz   or 13
+    l.Size           = size  or UDim2.new(1,0,1,0)
+    l.Position       = pos   or UDim2.new(0,0,0,0)
+    l.TextXAlignment = xa    or Enum.TextXAlignment.Left
+    l.TextYAlignment = Enum.TextYAlignment.Center
+    l.Name           = name  or "L"
+    l.ZIndex         = zi    or 1
+    l.TextWrapped    = wrap  or false
+    l.Parent         = parent
+    return l
+end
+
+local function mkB(parent, text, bgCol, tcol, font, tsz, size, pos, name, r, zi, hcol)
+    local b = Instance.new("TextButton")
+    b.BackgroundColor3 = bgCol or TH.AccentLo
+    b.BorderSizePixel  = 0
+    b.Text             = text  or ""
+    b.TextColor3       = tcol  or TH.TextPri
+    b.Font             = font  or Enum.Font.GothamBold
+    b.TextSize         = tsz   or 13
+    b.Size             = size  or UDim2.new(0,100,0,32)
+    b.Position         = pos   or UDim2.new(0,0,0,0)
+    b.AutoButtonColor  = false
+    b.Name             = name  or "B"
+    b.ZIndex           = zi    or 1
+    if r then corner(b, r) end
+    local hc = hcol or TH.Accent
+    b.MouseEnter:Connect(function()
+        TweenService:Create(b, TweenInfo.new(0.1), {BackgroundColor3=hc}):Play()
+    end)
+    b.MouseLeave:Connect(function()
+        TweenService:Create(b, TweenInfo.new(0.1), {BackgroundColor3=bgCol or TH.AccentLo}):Play()
+    end)
+    b.Parent = parent
+    return b
+end
+
+-- Draggable
+local function makeDraggable(frame, handle)
+    local drag, sp, sf = false
+    handle.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            drag=true; sp=i.Position; sf=frame.Position
+        end
+    end)
+    handle.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then drag=false end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+            local d = i.Position - sp
+            frame.Position = UDim2.new(sf.X.Scale, sf.X.Offset+d.X,
+                                       sf.Y.Scale, sf.Y.Offset+d.Y)
+        end
+    end)
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  RESPONSIVE WINDOW SIZE
+-- ════════════════════════════════════════════════════════════════════════════
+
+local function getSize()
+    local vp = cam.ViewportSize
+    local w  = math.clamp(math.floor(vp.X * 0.38), 380, 620)
+    local h  = math.clamp(math.floor(vp.Y * 0.75), 460, 720)
+    local x  = math.floor(vp.X * 0.5 - w * 0.5)
+    local y  = math.floor(vp.Y * 0.5 - h * 0.5)
+    return w, h, x, y
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  BUILD GUI
+-- ════════════════════════════════════════════════════════════════════════════
+
+local oldGui = pgui:FindFirstChild("ScriptHub")
+if oldGui then oldGui:Destroy() end
+
+local gui = Instance.new("ScreenGui")
+gui.Name           = "ScriptHub"
+gui.ResetOnSpawn   = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent         = pgui
+
+local initW, initH, initX, initY = getSize()
+
+local win = mkF(gui, TH.BG,
+                UDim2.new(0,initW,0,initH),
+                UDim2.new(0,initX,0,initY),
+                "HubWindow", 10, 2)
+stroke(win, TH.Border, 1)
+
+-- Auto-resize on viewport change
+cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    local w,h,_,_ = getSize()
+    win.Size = UDim2.new(0,w,0,h)
+end)
+
+-- ── Title bar ─────────────────────────────────────────────────────────────────
+local HDR_H = 48
+local hdr = mkF(win, TH.Panel,
+                UDim2.new(1,0,0,HDR_H), UDim2.new(0,0,0,0),
+                "Hdr", 10, 3)
+mkF(hdr, TH.Panel, UDim2.new(1,0,0,10), UDim2.new(0,0,1,-10), "Fix", 0, 3)
+
+-- Gradient accent strip across the top
+local topStrip = mkF(hdr, TH.Accent,
+                     UDim2.new(1,0,0,3), UDim2.new(0,0,0,0),
+                     "Strip", 0, 4)
+local grad = Instance.new("UIGradient")
+grad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, TH.Accent),
+    ColorSequenceKeypoint.new(0.5, TH.AccentHi),
+    ColorSequenceKeypoint.new(1, TH.Rig),
+})
+grad.Parent = topStrip
+
+-- Title text
+mkL(hdr, "Script Hub", TH.TextPri, Enum.Font.GothamBold, 17,
+    UDim2.new(1,-200,1,0), UDim2.new(0,16,0,0), nil, "Title", 4)
+
+-- Group badge (shown when in rig-loader game)
+if RIG_GAME then
+    local badge = mkF(hdr, TH.RigLo,
+                      UDim2.new(0,100,0,22), UDim2.new(1,-220,0.5,-11),
+                      "RigBadge", 4, 4)
+    stroke(badge, TH.Rig, 1)
+    mkL(badge, "⚙ Rig Loader ON", TH.Rig, Enum.Font.GothamBold, 10,
+        UDim2.new(1,0,1,0), UDim2.new(0,0,0,0),
+        Enum.TextXAlignment.Center, "RigTxt", 5)
+end
+
+-- Close button
+local closeBtn = mkB(hdr, "✕",
+                     Color3.fromHex("#2a1520"), TH.Red,
+                     Enum.Font.GothamBold, 13,
+                     UDim2.new(0,28,0,28), UDim2.new(1,-36,0.5,-14),
+                     "Close", 5, 5, TH.Red)
+closeBtn.MouseButton1Click:Connect(function() win.Visible = false end)
+
+makeDraggable(win, hdr)
+
+-- ── Info strip ────────────────────────────────────────────────────────────────
+local INFO_H = 28
+local infoBar = mkF(win, TH.AccentLo,
+                    UDim2.new(1,0,0,INFO_H), UDim2.new(0,0,0,HDR_H),
+                    "InfoBar", 0, 2)
+mkL(infoBar,
+    "  Click a script to load it. Rig buttons auto-send chat commands.",
+    TH.AccentHi, Enum.Font.Gotham, 11,
+    UDim2.new(1,0,1,0), UDim2.new(0,0,0,0),
+    nil, "InfoTxt", 3)
+
+-- ── Scroll area ───────────────────────────────────────────────────────────────
+local SCROLL_TOP = HDR_H + INFO_H + 8
+local scroll     = Instance.new("ScrollingFrame")
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel        = 0
+scroll.ScrollBarThickness     = 4
+scroll.ScrollBarImageColor3   = TH.AccentLo
+scroll.AutomaticCanvasSize    = Enum.AutomaticSize.Y
+scroll.CanvasSize             = UDim2.new(0,0,0,0)
+scroll.Size                   = UDim2.new(1,-16, 1, -(SCROLL_TOP + 16))
+scroll.Position               = UDim2.new(0,8, 0, SCROLL_TOP)
+scroll.ZIndex                 = 2
+scroll.Parent                 = win
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding   = UDim.new(0,8)
+listLayout.Parent    = scroll
+
+local listPad = Instance.new("UIPadding")
+listPad.PaddingBottom = UDim.new(0,8)
+listPad.Parent        = scroll
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  BUILD SCRIPT CARDS
+--  Each card auto-sizes and contains:
+--    • Script name + description
+--    • [ Load Script ] button
+--    • [ Load Rig ]    button  (only if rigCmd exists AND RIG_GAME is true)
+-- ════════════════════════════════════════════════════════════════════════════
+
+local function buildCards()
+    -- Clear
+    for _, ch in ipairs(scroll:GetChildren()) do
+        if ch:IsA("Frame") then ch:Destroy() end
+    end
+
+    for idx, script in ipairs(SCRIPTS) do
+        --[[
+            Card height logic:
+              • Base card = 70px  (name + desc + load button)
+              • If rig button is shown: +36px
+        --]]
+        local showRig = RIG_GAME and (script.rigCmd ~= nil)
+        local CARD_H  = showRig and 106 or 72
+
+        local card = mkF(scroll, TH.Card,
+                         UDim2.new(1,0,0,CARD_H), UDim2.new(0,0,0,0),
+                         "Card_"..idx, 8, 2)
+        card.LayoutOrder = idx
+        stroke(card, TH.Border, 1)
+
+        -- Hover tint
+        card.MouseEnter:Connect(function()
+            TweenService:Create(card, TweenInfo.new(0.1),
+                {BackgroundColor3=TH.CardHov}):Play()
+        end)
+        card.MouseLeave:Connect(function()
+            TweenService:Create(card, TweenInfo.new(0.1),
+                {BackgroundColor3=TH.Card}):Play()
+        end)
+
+        -- Index badge
+        local numBadge = mkF(card, TH.AccentLo,
+                             UDim2.new(0,26,0,26), UDim2.new(0,10,0,10),
+                             "Num", 5, 3)
+        mkL(numBadge, tostring(idx), TH.Accent,
+            Enum.Font.GothamBold, 12,
+            UDim2.new(1,0,1,0), UDim2.new(0,0,0,0),
+            Enum.TextXAlignment.Center, "NumL", 4)
+
+        -- Script name
+        mkL(card, script.name, TH.TextPri,
+            Enum.Font.GothamBold, 14,
+            UDim2.new(1,-170,0,22), UDim2.new(0,44,0,8),
+            nil, "Name", 3)
+
+        -- Description
+        mkL(card, script.desc or "", TH.TextSec,
+            Enum.Font.Gotham, 11,
+            UDim2.new(1,-170,0,18), UDim2.new(0,44,0,30),
+            nil, "Desc", 3, true)
+
+        -- ── Load Script button ────────────────────────────────────────────────
+        local loadBtn = mkB(card,
+                            "▶  Load Script",
+                            TH.AccentLo, TH.AccentHi,
+                            Enum.Font.GothamBold, 12,
+                            UDim2.new(0,110,0,28), UDim2.new(1,-124,0,10),
+                            "LoadBtn", 6, 3, TH.Accent)
+
+        loadBtn.MouseButton1Click:Connect(function()
+            notify("Hub", "Loading "..script.name.."…")
+            loadBtn.Text = "Loading…"
+            loadBtn.TextColor3 = TH.TextSec
+            task.spawn(function()
+                loadScript(script.url, script.name)
+                task.wait(2)
+                loadBtn.Text       = "▶  Load Script"
+                loadBtn.TextColor3 = TH.AccentHi
+            end)
+        end)
+
+        -- ── Rig Loader button (conditional) ───────────────────────────────────
+        if showRig then
+            -- Divider line
+            local div = mkF(card, TH.Border,
+                            UDim2.new(1,-20,0,1), UDim2.new(0,10,0,70),
+                            "Div", 0, 3)
+
+            -- Rig label
+            mkL(card, "⚙ Rig Loader", TH.Rig,
+                Enum.Font.GothamBold, 11,
+                UDim2.new(0,80,0,22), UDim2.new(0,10,0,74),
+                nil, "RigLabel", 3)
+
+            -- Rig description
+            mkL(card,
+                "Sends: -gh "..script.rigCmd.."  then  -sh",
+                TH.TextDis, Enum.Font.Code, 10,
+                UDim2.new(1,-120,0,22), UDim2.new(0,92,0,74),
+                nil, "RigDesc", 3)
+
+            -- Rig button
+            local rigBtn = mkB(card,
+                               "⚙  Load Rig",
+                               TH.RigLo, TH.Rig,
+                               Enum.Font.GothamBold, 12,
+                               UDim2.new(0,100,0,22), UDim2.new(1,-114,0,76),
+                               "RigBtn", 6, 3, TH.Rig)
+            stroke(rigBtn, TH.Rig, 1)
+
+            rigBtn.MouseButton1Click:Connect(function()
+                -- Send  -gh <rigCmd>
+                sendChat("-gh " .. script.rigCmd)
+                notify("Rig Loader",
+                       ("Sent: -gh %s\nSending -sh in %.1fs…")
+                           :format(script.rigCmd, RIG_CMD_DELAY), 3)
+
+                -- Send  -sh  after delay
+                task.delay(RIG_CMD_DELAY, function()
+                    sendChat("-sh")
+                end)
+
+                -- Visual feedback
+                rigBtn.Text       = "Sent!"
+                rigBtn.TextColor3 = TH.Green
+                task.delay(2, function()
+                    rigBtn.Text       = "⚙  Load Rig"
+                    rigBtn.TextColor3 = TH.Rig
+                end)
+            end)
+        end
+    end
+end
+
+buildCards()
+
+-- ── Count label ───────────────────────────────────────────────────────────────
+local footerBar = mkF(win, TH.Panel,
+                      UDim2.new(1,0,0,20), UDim2.new(0,0,1,-20),
+                      "Footer", 0, 2)
+mkF(footerBar, TH.Panel, UDim2.new(1,0,0,10), UDim2.new(0,0,0,-10), "FootFix", 0, 2)
+mkL(footerBar,
+    ("  %d scripts loaded%s"):format(
+        #SCRIPTS,
+        RIG_GAME and "  •  Rig Loader active" or ""
+    ),
+    TH.TextDis, Enum.Font.Gotham, 10,
+    UDim2.new(1,0,1,0), UDim2.new(0,0,0,0),
+    nil, "Count", 3)
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  SHOW
+-- ════════════════════════════════════════════════════════════════════════════
+
+win.Visible = true
+
+notify("Script Hub",
+       ("%d scripts ready%s"):format(
+           #SCRIPTS,
+           RIG_GAME and " | Rig Loader ON" or ""
+       ), 4)
