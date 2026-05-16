@@ -64,9 +64,9 @@ local SCRIPTS = {
     -- ── 2. Example Script 2 ───────────────────────────────────────────────────
     --  Replace url with your actual script URL
     {
-        name   = "My Reanimation ( Private",
+        name   = "My Reanimation ( Private )",
         desc   = "FE Custom reanimate script",
-        url    = "https://example.com/earthquake.lua",
+        url    = "https://raw.githubusercontent.com/User14353/Personal-reanimation/refs/heads/main/MyAnimator.lua",
         rigCmd = "5316539421 5316549755 140395948277978 138364679836274 102599402682100 90960046381276 82942681251131 4932728913 5699795428 5316479641",
     }
 
