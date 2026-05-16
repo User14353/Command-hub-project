@@ -3,18 +3,18 @@
 ║                    COMMAND MENU  —  Client-Side                              ║
 ║                                                                              ║
 ║  Chat prefix  _<command>   to run a command                                  ║
-║  _open  /  _close          to show / hide the menu GUI                      ║
+║  _open  /  _close          to show / hide the menu GUI                       ║
 ║                                                                              ║
-║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────  ║
+║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────   ║
 ║                                                                              ║
 ║  1. Find the COMMANDS table below.                                           ║
 ║  2. Add a new entry:                                                         ║
 ║       {                                                                      ║
-║           name    = "commandname",   -- what you type after _               ║
-║           help    = "description",   -- shown in the menu                   ║
-║           args    = "[optional arg]", -- argument hint (or "" for none)     ║
-║           run     = function(args)   -- args = string after command name    ║
-║               -- your code here                                             ║
+║           name    = "commandname",   -- what you type after _                ║
+║           help    = "description",   -- shown in the menu                    ║
+║           args    = "[optional arg]", -- argument hint (or "" for none)      ║
+║           run     = function(args)   -- args = string after command name     ║
+║               -- your code here                                              ║
 ║           end,                                                               ║
 ║       },                                                                     ║
 ║  3. Done. No GUI edits needed. It auto-populates.                            ║
@@ -519,7 +519,7 @@ local COMMANDS = {
         name = "follow",
         help = "Automatically follow a player",
         args = "<name>",
-        run = (function()
+        run = (function(args)
 						active = not active
 
 						if active then
