@@ -404,13 +404,28 @@ local COMMANDS = {
         help = "Teleport to a player by name",
         args = "<name>",
         run  = function(args)
-            local name   = args:match("^%s*(.-)%s*$")
-            local target = nil
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Name:lower():find(name:lower(), 1, true) then
-                    target = p; break
-                end
-            end
+						local name = args:match("^%s*(.-)%s*$")
+						local query = name:lower()
+
+						local target = nil
+
+						-- pass 1: DisplayName match first
+						for _, p in ipairs(Players:GetPlayers()) do
+								if p.DisplayName:lower():find(query, 1, true) then
+										target = p
+										break
+								end
+						end
+
+						-- pass 2: fallback to Username
+						if not target then
+								for _, p in ipairs(Players:GetPlayers()) do
+										if p.Name:lower():find(query, 1, true) then
+												target = p
+												break
+										end
+								end
+						end
             if not target then notify("Goto", "Player not found: "..name); return end
             local tc = target.Character
             local tp = tc and tc:FindFirstChild("HumanoidRootPart")
@@ -430,13 +445,28 @@ local COMMANDS = {
         help = "Bring a player to you (local only)",
         args = "<name>",
         run  = function(args)
-            local name   = args:match("^%s*(.-)%s*$")
-            local target = nil
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Name:lower():find(name:lower(), 1, true) then
-                    target = p; break
-                end
-            end
+						local name = args:match("^%s*(.-)%s*$")
+						local query = name:lower()
+
+						local target = nil
+
+						-- pass 1: DisplayName match first
+						for _, p in ipairs(Players:GetPlayers()) do
+								if p.DisplayName:lower():find(query, 1, true) then
+										target = p
+										break
+								end
+						end
+
+						-- pass 2: fallback to Username
+						if not target then
+								for _, p in ipairs(Players:GetPlayers()) do
+										if p.Name:lower():find(query, 1, true) then
+												target = p
+												break
+										end
+								end
+						end
             if not target then notify("Bring", "Player not found: "..name); return end
             local tc  = target.Character
             local tp  = tc and tc:FindFirstChild("HumanoidRootPart")
@@ -497,16 +527,30 @@ local COMMANDS = {
             return function(args)
                 active = not active
     
-                if active then
-                    local name = args:match("^%s*(.-)%s*$")
-    
-                    target = nil
+            if active then
+                local name = args:match("^%s*(.-)%s*$")
+                local query = name:lower()
+            
+                target = nil
+            
+                -- pass 1: DisplayName only
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.DisplayName:lower():find(query, 1, true) then
+                        target = p
+                        break
+                    end
+                end
+            
+                -- pass 2: Username fallback
+                if not target then
                     for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(name:lower(), 1, true) then
+                        if p.Name:lower():find(query, 1, true) then
                             target = p
                             break
                         end
                     end
+                end
+            end
     
                     if not target then
                         active = false
@@ -538,14 +582,14 @@ local COMMANDS = {
         name = "trivia",
         help = "Start/stop trivia game with chat answers + leaderboard",
         args = "",
-        run  = (function()
+        run = (function()
     
             local active = false
             local currentAnswer = nil
-            local currentQuestion = nil
+            local questionIndex = 0
+            local chatConn = nil
     
             local scores = {}
-            local questionIndex = 1
     
             local questions = {
                 {"What planet is known as the Red Planet?", "mars"},
@@ -558,18 +602,15 @@ local COMMANDS = {
                 {"How many legs does a spider have?", "8"},
                 {"What year did Roblox release?", "2006"},
                 {"What is the square root of 81?", "9"},
-    
                 {"What is the fastest land animal?", "cheetah"},
                 {"What is the tallest mountain?", "everest"},
                 {"What is the currency of Japan?", "yen"},
-                {"What is 10 x 10?", "100"},
                 {"How many continents are there?", "7"},
                 {"What is the boiling point of water (C)?", "100"},
                 {"What planet is closest to the sun?", "mercury"},
                 {"What color do you get mixing red and blue?", "purple"},
                 {"What is the capital of France?", "paris"},
                 {"How many days in a leap year?", "366"},
-    
                 {"What is the hardest natural substance?", "diamond"},
                 {"What is the biggest mammal?", "blue whale"},
                 {"What language has the most native speakers?", "mandarin"},
@@ -580,18 +621,15 @@ local COMMANDS = {
                 {"What planet has rings?", "saturn"},
                 {"What is the main gas in air?", "nitrogen"},
                 {"How many bones in adult body?", "206"},
-    
                 {"What is the speed of light?", "299792458"},
                 {"What is the capital of Germany?", "berlin"},
                 {"What fruit keeps the doctor away (saying)?", "apple"},
                 {"What is 3 squared?", "9"},
                 {"What is the largest desert?", "sahara"},
                 {"What is the smallest prime number?", "2"},
-                {"What planet is known for rings?", "saturn"},
                 {"What is the capital of Spain?", "madrid"},
                 {"What is 100 divided by 4?", "25"},
                 {"What is the main language in Brazil?", "portuguese"},
-    
                 {"What is the ocean between Africa and Australia?", "indian"},
                 {"What is 15 + 15?", "30"},
                 {"What is the capital of USA?", "washington"},
@@ -602,7 +640,6 @@ local COMMANDS = {
                 {"What is 7 x 7?", "49"},
                 {"What planet is blue?", "earth"},
                 {"What is the smallest country?", "vatican"},
-    
                 {"What is the chemical symbol for gold?", "au"},
                 {"What is 50 + 50?", "100"},
                 {"What is the capital of Russia?", "moscow"},
@@ -613,30 +650,26 @@ local COMMANDS = {
                 {"What is the longest river?", "nile"},
             }
     
-            local function getLeaderboard()
-                local list = {}
-                for p, score in pairs(scores) do
-                    table.insert(list, {name = p.Name, score = score})
-                end
-    
-                table.sort(list, function(a,b)
-                    return a.score > b.score
-                end)
-    
-                return list
+            -- 🔥 display name helper
+            local function getName(plr)
+                return plr.DisplayName or plr.Name
             end
     
-            local function announceBoard()
-                local board = getLeaderboard()
-                local msg = "🏆 Trivia Leaderboard:\n"
+            -- 🔥 modern chat sender (fixes your error)
+            local function say(msg)
+                local TextChatService = game:GetService("TextChatService")
     
-                for i = 1, math.min(5, #board) do
-                    msg ..= i .. ". " .. board[i].name .. " - " .. board[i].score .. "\n"
+                if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                    local channel = TextChatService:FindFirstChild("TextChannels")
+                    if channel and channel:FindFirstChild("RBXGeneral") then
+                        channel.RBXGeneral:SendAsync(msg)
+                    end
+                else
+                    local ev = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+                    if ev then
+                        ev.SayMessageRequest:FireServer(msg, "All")
+                    end
                 end
-    
-                game:GetService("ReplicatedStorage")
-                    .DefaultChatSystemChatEvents
-                    .SayMessageRequest:FireServer(msg, "All")
             end
     
             local function nextQuestion()
@@ -648,24 +681,42 @@ local COMMANDS = {
                 end
     
                 local q = questions[questionIndex]
-                currentQuestion = q[1]
                 currentAnswer = q[2]
     
-                game:GetService("ReplicatedStorage")
-                    .DefaultChatSystemChatEvents
-                    .SayMessageRequest:FireServer("🧠 Trivia: "..currentQuestion, "All")
+                say("🧠 Trivia: "..q[1])
             end
     
-            -- chat listener
-            local chatConn = nil
+            local function leaderboard()
+                local list = {}
     
-            local function startGame()
+                for plr, score in pairs(scores) do
+                    table.insert(list, {
+                        name = getName(plr),
+                        score = score
+                    })
+                end
+    
+                table.sort(list, function(a,b)
+                    return a.score > b.score
+                end)
+    
+                local msg = "🏆 Trivia Leaderboard:\n"
+    
+                for i = 1, math.min(5, #list) do
+                    msg ..= i..". "..list[i].name.." - "..list[i].score.."\n"
+                end
+    
+                say(msg)
+            end
+    
+            local function start()
                 active = true
                 scores = {}
+                questionIndex = 0
     
-                notify("Trivia", "Started")
+                say("🎮 Trivia Started!")
     
-                chatConn = Players.PlayerChatted:Connect(function(plr, msg)
+                chatConn = game:GetService("Players").PlayerChatted:Connect(function(plr, msg)
                     if not active then return end
     
                     msg = msg:lower():gsub("%s+", "")
@@ -673,14 +724,9 @@ local COMMANDS = {
                     if currentAnswer and msg == currentAnswer then
                         scores[plr] = (scores[plr] or 0) + 1
     
-                        game:GetService("ReplicatedStorage")
-                            .DefaultChatSystemChatEvents
-                            .SayMessageRequest:FireServer(
-                                "✅ "..plr.Name.." got it right! Answer: "..currentAnswer,
-                                "All"
-                            )
+                        say("✅ "..getName(plr).." got it right! ("..currentAnswer..")")
     
-                        announceBoard()
+                        leaderboard()
                         nextQuestion()
                     end
                 end)
@@ -688,7 +734,7 @@ local COMMANDS = {
                 nextQuestion()
             end
     
-            local function stopGame()
+            local function stop()
                 active = false
     
                 if chatConn then
@@ -696,18 +742,18 @@ local COMMANDS = {
                     chatConn = nil
                 end
     
-                announceBoard()
-    
-                notify("Trivia", "Stopped")
+                leaderboard()
+                say("🛑 Trivia Ended!")
             end
     
-            return function(_args)
+            return function()
                 if active then
-                    stopGame()
+                    stop()
                 else
-                    startGame()
+                    start()
                 end
             end
+    
         end)(),
     },
 
@@ -743,16 +789,30 @@ local COMMANDS = {
             return function(args)
                 active = not active
     
-                if active then
-                    local name = args:match("^%s*(.-)%s*$")
-    
-                    target = nil
+            if active then
+                local name = args:match("^%s*(.-)%s*$")
+                local query = name:lower()
+            
+                target = nil
+            
+                -- pass 1: DisplayName only
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.DisplayName:lower():find(query, 1, true) then
+                        target = p
+                        break
+                    end
+                end
+            
+                -- pass 2: Username fallback
+                if not target then
                     for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(name:lower(), 1, true) then
+                        if p.Name:lower():find(query, 1, true) then
                             target = p
                             break
                         end
                     end
+                end
+            end
     
                     if not target then
                         active = false
@@ -800,16 +860,30 @@ local COMMANDS = {
             return function(args)
                 active = not active
     
-                if active then
-                    local name = args:match("^%s*(.-)%s*$")
-    
-                    target = nil
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(name:lower(), 1, true) then
-                            target = p
-                            break
-                        end
-                    end
+								if active then
+										local name = args:match("^%s*(.-)%s*$")
+										local query = name:lower()
+								
+										target = nil
+								
+										-- pass 1: DisplayName only
+										for _, p in ipairs(Players:GetPlayers()) do
+												if p.DisplayName:lower():find(query, 1, true) then
+														target = p
+														break
+												end
+										end
+								
+										-- pass 2: Username fallback
+										if not target then
+												for _, p in ipairs(Players:GetPlayers()) do
+														if p.Name:lower():find(query, 1, true) then
+																target = p
+																break
+														end
+												end
+										end
+								end
     
                     if not target then
                         active = false
