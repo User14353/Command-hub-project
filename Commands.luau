@@ -464,7 +464,7 @@ local COMMANDS = {
             -- For local file loading (most executors):
             local ok, err = pcall(function()
                 if readfile then
-                    loadstring(readfile("ScriptHub.lua"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Command-hub-project/refs/heads/main/Script%20hub.luau"))()
                 else
                     notify("Hub", "Place ScriptHub.lua next to this file and use readfile.")
                 end
