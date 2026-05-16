@@ -523,7 +523,7 @@ local COMMANDS = {
 						active = not active
 
 						if active then
-								local name = args:match("^%s*(.-)%s*$")
+								local name = (args or ""):match("^%s*(.-)%s*$")
 								local query = name:lower()
 
 								target = nil
