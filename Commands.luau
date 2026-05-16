@@ -515,15 +515,22 @@ local COMMANDS = {
             if hum then hum.Health = 0 end
         end,
     },
-    {
-        name = "follow",
-        help = "Automatically follow a player",
-        args = "<name>",
-        run = (function(args)
+		
+		{
+				name = "follow",
+				help = "Automatically follow a player",
+				args = "<name>",
+				run = (function(args)
 						active = not active
 
 						if active then
-								local name = (args or ""):match("^%s*(.-)%s*$")
+								local name = ((args or ""):match("^%s*(.-)%s*$"))
+								if not name or name == "" then
+										active = false
+										notify("Follow", "No player specified.")
+										return
+								end
+
 								local query = name:lower()
 
 								target = nil
@@ -557,7 +564,7 @@ local COMMANDS = {
 										local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 
 										if hrp and thrp then
-												hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
+												hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 3)
 										end
 								end)
 
@@ -573,7 +580,7 @@ local COMMANDS = {
 								notify("Follow", "OFF")
 						end
 				end)(),
-    },
+		},
 
     -- ── TRIVIA GAME ─────────────────────────────────────────────────────────────
     {
