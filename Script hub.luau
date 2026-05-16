@@ -306,7 +306,7 @@ local win = mkF(gui, TH.BG,
                 UDim2.new(0,initW,0,initH),
                 UDim2.new(0,initX,0,initY),
                 "HubWindow", 10, 2)
-stroke(win, TH.Border, 1)
+stroke(win, TH.Border, 0.5)
 
 -- Auto-resize on viewport change
 cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
