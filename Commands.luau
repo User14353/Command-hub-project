@@ -3,18 +3,18 @@
 ║                    COMMAND MENU  —  Client-Side                              ║
 ║                                                                              ║
 ║  Chat prefix  _<command>   to run a command                                  ║
-║  _open  /  _close          to show / hide the menu GUI                      ║
+║  _open  /  _close          to show / hide the menu GUI                       ║
 ║                                                                              ║
-║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────  ║
+║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────   ║
 ║                                                                              ║
 ║  1. Find the COMMANDS table below.                                           ║
 ║  2. Add a new entry:                                                         ║
 ║       {                                                                      ║
-║           name    = "commandname",   -- what you type after _               ║
-║           help    = "description",   -- shown in the menu                   ║
-║           args    = "[optional arg]", -- argument hint (or "" for none)     ║
-║           run     = function(args)   -- args = string after command name    ║
-║               -- your code here                                             ║
+║           name    = "commandname",   -- what you type after _                ║
+║           help    = "description",   -- shown in the menu                    ║
+║           args    = "[optional arg]", -- argument hint (or "" for none)      ║
+║           run     = function(args)   -- args = string after command name     ║
+║               -- your code here                                              ║
 ║           end,                                                               ║
 ║       },                                                                     ║
 ║  3. Done. No GUI edits needed. It auto-populates.                            ║
@@ -515,269 +515,361 @@ local COMMANDS = {
             if hum then hum.Health = 0 end
         end,
     },
-		
-		{
-				name = "follow",
-				help = "Automatically follow a player",
-				args = "<name>",
-				run = (function(args)
-						active = not active
 
-						if active then
-								local name = ((args or ""):match("^%s*(.-)%s*$"))
-								if not name or name == "" then
-										active = false
-										notify("Follow", "No player specified.")
-										return
-								end
+ 		{
+        name = "follow",
+        help = "Follow a player. Run again to stop.",
+        args = "<name>",
+        run  = (function()
+            local active = false   -- persists between calls
+            local conn   = nil
+            local target = nil
 
-								local query = name:lower()
+            return function(args)
+                active = not active
 
-								target = nil
-
-								-- pass 1: DisplayName only
-								for _, p in ipairs(Players:GetPlayers()) do
-										if p.DisplayName:lower():find(query, 1, true) then
-												target = p
-												break
-										end
-								end
-
-								-- pass 2: Username fallback
-								if not target then
-										for _, p in ipairs(Players:GetPlayers()) do
-												if p.Name:lower():find(query, 1, true) then
-														target = p
-														break
-												end
-										end
-								end
-
-								if not target then
-										active = false
-										notify("Follow", "Player not found.")
-										return
-								end
-
-								conn = RunService.RenderStepped:Connect(function()
-										local hrp = getHRP()
-										local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-
-										if hrp and thrp then
-												hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 3)
-										end
-								end)
-
-								notify("Follow", "ON")
-
-						else
-								if conn then
-										conn:Disconnect()
-										conn = nil
-								end
-
-								target = nil
-								notify("Follow", "OFF")
-						end
-				end)(),
-		},
-
-    -- ── TRIVIA GAME ─────────────────────────────────────────────────────────────
-    {
-        name = "trivia",
-        help = "Start/stop trivia game with chat answers + leaderboard",
-        args = "",
-        run = (function()
-    
-            local active = false
-            local currentAnswer = nil
-            local questionIndex = 0
-            local chatConn = nil
-    
-            local scores = {}
-    
-            local questions = {
-                {"What planet is known as the Red Planet?", "mars"},
-                {"How many hearts does an octopus have?", "3"},
-                {"What is 5 + 7?", "12"},
-                {"What is the capital of Australia?", "canberra"},
-                {"What gas do plants breathe in?", "carbon dioxide"},
-                {"What is the largest ocean?", "pacific"},
-                {"What is H2O commonly known as?", "water"},
-                {"How many legs does a spider have?", "8"},
-                {"What year did Roblox release?", "2006"},
-                {"What is the square root of 81?", "9"},
-                {"What is the fastest land animal?", "cheetah"},
-                {"What is the tallest mountain?", "everest"},
-                {"What is the currency of Japan?", "yen"},
-                {"How many continents are there?", "7"},
-                {"What is the boiling point of water (C)?", "100"},
-                {"What planet is closest to the sun?", "mercury"},
-                {"What color do you get mixing red and blue?", "purple"},
-                {"What is the capital of France?", "paris"},
-                {"How many days in a leap year?", "366"},
-                {"What is the hardest natural substance?", "diamond"},
-                {"What is the biggest mammal?", "blue whale"},
-                {"What language has the most native speakers?", "mandarin"},
-                {"What is 9 x 9?", "81"},
-                {"What is the capital of Italy?", "rome"},
-                {"What organ pumps blood?", "heart"},
-                {"What is the freezing point of water?", "0"},
-                {"What planet has rings?", "saturn"},
-                {"What is the main gas in air?", "nitrogen"},
-                {"How many bones in adult body?", "206"},
-                {"What is the speed of light?", "299792458"},
-                {"What is the capital of Germany?", "berlin"},
-                {"What fruit keeps the doctor away (saying)?", "apple"},
-                {"What is 3 squared?", "9"},
-                {"What is the largest desert?", "sahara"},
-                {"What is the smallest prime number?", "2"},
-                {"What is the capital of Spain?", "madrid"},
-                {"What is 100 divided by 4?", "25"},
-                {"What is the main language in Brazil?", "portuguese"},
-                {"What is the ocean between Africa and Australia?", "indian"},
-                {"What is 15 + 15?", "30"},
-                {"What is the capital of USA?", "washington"},
-                {"What animal is known as king of jungle?", "lion"},
-                {"What is the square root of 144?", "12"},
-                {"What is the largest continent?", "asia"},
-                {"What is the capital of China?", "beijing"},
-                {"What is 7 x 7?", "49"},
-                {"What planet is blue?", "earth"},
-                {"What is the smallest country?", "vatican"},
-                {"What is the chemical symbol for gold?", "au"},
-                {"What is 50 + 50?", "100"},
-                {"What is the capital of Russia?", "moscow"},
-                {"What is the fastest water animal?", "sailfish"},
-                {"What is 2 + 2 x 2?", "6"},
-                {"What is the main source of Earth’s energy?", "sun"},
-                {"What is the capital of India?", "new delhi"},
-                {"What is the longest river?", "nile"},
-            }
-    
-            -- 🔥 display name helper
-            local function getName(plr)
-                return plr.DisplayName or plr.Name
-            end
-    
-            -- 🔥 modern chat sender (fixes your error)
-            local function say(msg)
-                local TextChatService = game:GetService("TextChatService")
-    
-                if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-                    local channel = TextChatService:FindFirstChild("TextChannels")
-                    if channel and channel:FindFirstChild("RBXGeneral") then
-                        channel.RBXGeneral:SendAsync(msg)
-                    end
-                else
-                    local ev = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-                    if ev then
-                        ev.SayMessageRequest:FireServer(msg, "All")
-                    end
-                end
-            end
-    
-            local function nextQuestion()
-                if not active then return end
-    
-                questionIndex = questionIndex + 1
-                if questionIndex > #questions then
-                    questionIndex = 1
-                end
-    
-                local q = questions[questionIndex]
-                currentAnswer = q[2]
-    
-                say("🧠 Trivia: "..q[1])
-            end
-    
-            local function leaderboard()
-                local list = {}
-    
-                for plr, score in pairs(scores) do
-                    table.insert(list, {
-                        name = getName(plr),
-                        score = score
-                    })
-                end
-    
-                table.sort(list, function(a,b)
-                    return a.score > b.score
-                end)
-    
-                local msg = "🏆 Trivia Leaderboard:\n"
-    
-                for i = 1, math.min(5, #list) do
-                    msg = msg .. i .. ". " .. list[i].name .. " - " .. list[i].score .. "\n"
-                end
-    
-                say(msg)
-            end
-    
-            local function start()
-                active = true
-                scores = {}
-                questionIndex = 0
-    
-                say("🎮 Trivia Started!")
-    
-                chatConn = game:GetService("Players").PlayerChatted:Connect(function(plr, msg)
-                    if not active then return end
-    
-                    msg = msg:lower():gsub("%s+", "")
-    
-                    if currentAnswer and msg == currentAnswer then
-                        scores[plr] = (scores[plr] or 0) + 1
-    
-                        say("✅ "..getName(plr).." got it right! ("..currentAnswer..")")
-    
-                        leaderboard()
-                        nextQuestion()
-                    end
-                end)
-    
-                nextQuestion()
-            end
-    
-            local function stop()
-                active = false
-    
-                if chatConn then
-                    chatConn:Disconnect()
-                    chatConn = nil
-                end
-    
-                leaderboard()
-                say("🛑 Trivia Ended!")
-            end
-    
-            return function()
                 if active then
-                    stop()
+                    -- resolve player name from args passed at call time
+                    local query = (args or ""):match("^%s*(.-)%s*$"):lower()
+
+                    if query == "" then
+                        active = false
+                        notify("Follow", "Usage: "..PREFIX.."follow <name>")
+                        return
+                    end
+
+                    target = nil
+
+                    -- pass 1: DisplayName
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= lp and p.DisplayName:lower():find(query, 1, true) then
+                            target = p; break
+                        end
+                    end
+                    -- pass 2: Username fallback
+                    if not target then
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if p ~= lp and p.Name:lower():find(query, 1, true) then
+                                target = p; break
+                            end
+                        end
+                    end
+
+                    if not target then
+                        active = false
+                        notify("Follow", "Player not found: "..query)
+                        return
+                    end
+
+                    conn = RunService.RenderStepped:Connect(function()
+                        local myHRP     = getHRP()
+                        local theirChar = target.Character
+                        local theirHRP  = theirChar and theirChar:FindFirstChild("HumanoidRootPart")
+
+                        if myHRP and theirHRP then
+                            myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, 3.5)
+                        end
+                    end)
+
+                    notify("Follow", "Following "..target.Name.." — run again to stop.")
+
                 else
-                    start()
+                    -- toggle OFF
+                    if conn then conn:Disconnect(); conn = nil end
+                    target = nil
+                    notify("Follow", "OFF")
                 end
             end
-    
         end)(),
     },
 
-    -- ── DANCE ─────────────────────────────────────────────────────────────────
+    -- ── 18. DANCE ─────────────────────────────────────────────────────────────
     {
         name = "dance",
-        help = "Play a random Roblox dance emote",
+        help = "Toggle a dance emote",
         args = "",
-        run  = function(_args)
-            local hum = getHum()
+        run  = (function()
+            local track = nil
 
-            if hum then
-                hum:LoadAnimation(Instance.new("Animation", hum){
-                    AnimationId = "rbxassetid://507771019"
-                }):Play()
+            -- A few dance animation IDs to cycle through
+            local DANCES = {
+                "rbxassetid://507771019",   -- default dance
+                "rbxassetid://507776043",   -- dance 2
+                "rbxassetid://507777268",   -- dance 3
+            }
+            local idx = 0
 
-                notify("Dance", "Started dancing.")
+            return function(_args)
+                local hum = getHum()
+                if not hum then notify("Dance", "No humanoid found."); return end
+
+                -- Stop current if playing
+                if track and track.IsPlaying then
+                    track:Stop()
+                    track = nil
+                    notify("Dance", "Stopped.")
+                    return
+                end
+
+                -- Cycle to next dance
+                idx = (idx % #DANCES) + 1
+
+                -- Create the Animation instance properly
+                local anim    = Instance.new("Animation")
+                anim.AnimationId = DANCES[idx]
+
+                -- Load and play
+                local ok, result = pcall(function()
+                    return hum:LoadAnimation(anim)
+                end)
+
+                if not ok or not result then
+                    notify("Dance", "Failed to load animation: "..tostring(result))
+                    return
+                end
+
+                track = result
+                track:Play()
+                notify("Dance", "Dancing! ("..idx.."/"..#DANCES..") — run again to stop or switch.")
             end
-        end,
+        end)(),
+    },
+
+    -- ── 19. TRIVIA ────────────────────────────────────────────────────────────
+    {
+        name = "trivia",
+        help = "Start/stop a trivia game in chat",
+        args = "",
+        run  = (function()
+            local active         = false
+            local currentAnswer  = nil   -- normalised (spaces stripped, lowercase)
+            local chatConns      = {}    -- one connection per player
+            local playerAddedConn = nil
+
+            -- ── Question bank ─────────────────────────────────────────────────
+            -- Format: { "Question text?", "answer" }
+            -- Answers are stored as-is; they get normalised at match-time.
+            local ALL_QUESTIONS = {
+                -- Original 56
+                {"What planet is known as the Red Planet?",        "mars"},
+                {"How many hearts does an octopus have?",          "3"},
+                {"What is 5 + 7?",                                 "12"},
+                {"What is the capital of Australia?",              "canberra"},
+                {"What gas do plants absorb from the air?",        "carbon dioxide"},
+                {"What is the largest ocean?",                     "pacific"},
+                {"What is H2O commonly known as?",                 "water"},
+                {"How many legs does a spider have?",              "8"},
+                {"What year did Roblox release?",                  "2006"},
+                {"What is the square root of 81?",                 "9"},
+                {"What is the fastest land animal?",               "cheetah"},
+                {"What is the tallest mountain?",                  "everest"},
+                {"What is the currency of Japan?",                 "yen"},
+                {"How many continents are there?",                 "7"},
+                {"What is the boiling point of water in Celsius?", "100"},
+                {"What planet is closest to the sun?",             "mercury"},
+                {"What colour do you get mixing red and blue?",    "purple"},
+                {"What is the capital of France?",                 "paris"},
+                {"How many days in a leap year?",                  "366"},
+                {"What is the hardest natural substance?",         "diamond"},
+                {"What is the biggest mammal?",                    "blue whale"},
+                {"What language has the most native speakers?",    "mandarin"},
+                {"What is 9 x 9?",                                 "81"},
+                {"What is the capital of Italy?",                  "rome"},
+                {"What organ pumps blood?",                        "heart"},
+                {"What is the freezing point of water in Celsius?","0"},
+                {"What planet has rings?",                         "saturn"},
+                {"What is the main gas in air?",                   "nitrogen"},
+                {"How many bones does an adult human have?",       "206"},
+                {"What is the capital of Germany?",                "berlin"},
+                {"What fruit keeps the doctor away?",              "apple"},
+                {"What is 3 squared?",                             "9"},
+                {"What is the largest desert?",                    "sahara"},
+                {"What is the smallest prime number?",             "2"},
+                {"What is the capital of Spain?",                  "madrid"},
+                {"What is 100 divided by 4?",                      "25"},
+                {"What is the main language of Brazil?",           "portuguese"},
+                {"What ocean lies between Africa and Australia?",  "indian"},
+                {"What is 15 + 15?",                               "30"},
+                {"What is the capital of the USA?",                "washington"},
+                {"What animal is known as king of the jungle?",    "lion"},
+                {"What is the square root of 144?",                "12"},
+                {"What is the largest continent?",                 "asia"},
+                {"What is the capital of China?",                  "beijing"},
+                {"What is 7 x 7?",                                 "49"},
+                {"What planet appears blue from space?",           "earth"},
+                {"What is the smallest country?",                  "vatican"},
+                {"What is the chemical symbol for gold?",          "au"},
+                {"What is 50 + 50?",                               "100"},
+                {"What is the capital of Russia?",                 "moscow"},
+                {"What is the fastest fish in the ocean?",         "sailfish"},
+                {"What is 2 + 2 x 2?",                            "6"},
+                {"What is the main source of Earth's energy?",     "sun"},
+                {"What is the capital of India?",                  "new delhi"},
+                {"What is the longest river?",                     "nile"},
+                {"What is 8 x 8?",                                 "64"},
+
+                -- 20 new questions
+                {"What is the capital of Japan?",                  "tokyo"},
+                {"What is the capital of Canada?",                 "ottawa"},
+                {"How many sides does a hexagon have?",            "6"},
+                {"What is the chemical symbol for water?",         "h2o"},
+                {"What is the largest planet in the solar system?","jupiter"},
+                {"What is the capital of Brazil?",                 "brasilia"},
+                {"How many players are on a football team?",       "11"},
+                {"What is the chemical symbol for iron?",          "fe"},
+                {"What is the smallest planet?",                   "mercury"},
+                {"What is the capital of Egypt?",                  "cairo"},
+                {"How many strings does a standard guitar have?",  "6"},
+                {"What is the powerhouse of the cell?",            "mitochondria"},
+                {"What is the capital of South Korea?",            "seoul"},
+                {"What is the square root of 256?",                "16"},
+                {"What is 13 x 13?",                               "169"},
+                {"What is the capital of Mexico?",                 "mexico city"},
+                {"How many hours are in a week?",                  "168"},
+                {"What is the chemical symbol for silver?",        "ag"},
+                {"What is the largest organ in the human body?",   "skin"},
+                {"What is the capital of Argentina?",              "buenos aires"},
+            }
+
+            -- Recency buffer — tracks indices of recently asked questions
+            local RECENCY_BUFFER = 10
+            local recentIndices  = {}   -- ring buffer of last N question indices
+            local remaining      = {}   -- indices not in recency buffer, shuffled
+
+            local function normalise(s)
+                -- lowercase + strip all whitespace, for fair comparison
+                return tostring(s):lower():gsub("%s+", "")
+            end
+
+            -- Rebuild the remaining pool excluding recent questions
+            local function rebuildPool()
+                local blocked = {}
+                for _, i in ipairs(recentIndices) do blocked[i] = true end
+                remaining = {}
+                for i = 1, #ALL_QUESTIONS do
+                    if not blocked[i] then
+                        table.insert(remaining, i)
+                    end
+                end
+                -- Fisher-Yates shuffle
+                for i = #remaining, 2, -1 do
+                    local j = math.random(1, i)
+                    remaining[i], remaining[j] = remaining[j], remaining[i]
+                end
+            end
+
+            local function pickQuestion()
+                if #remaining == 0 then
+                    rebuildPool()
+                end
+                local idx = table.remove(remaining, 1)
+
+                -- Update recency buffer
+                table.insert(recentIndices, idx)
+                if #recentIndices > RECENCY_BUFFER then
+                    table.remove(recentIndices, 1)
+                end
+
+                return ALL_QUESTIONS[idx]
+            end
+
+            -- Scores: { [Player] = number }
+            local scores = {}
+
+            local function getDisplayName(p)
+                return p.DisplayName or p.Name
+            end
+
+            local function postLeaderboard()
+                local list = {}
+                for p, s in pairs(scores) do
+                    -- guard: player might have left
+                    if p and p.Parent then
+                        table.insert(list, {name = getDisplayName(p), score = s})
+                    end
+                end
+                table.sort(list, function(a, b) return a.score > b.score end)
+
+                local msg = "🏆 Leaderboard: "
+                for i = 1, math.min(5, #list) do
+                    msg = msg .. i .. ". " .. list[i].name .. "=" .. list[i].score .. "  "
+                end
+                sendChat(msg)
+            end
+
+            local function askNext()
+                if not active then return end
+                local q       = pickQuestion()
+                currentAnswer = normalise(q[2])
+                sendChat("🧠 " .. q[1])
+            end
+
+            -- Wire up one player's Chatted event
+            local function connectPlayer(p)
+                if p == lp then
+                    -- Connect our own chatted through lp.Chatted
+                    -- (already connected to the menu, but we also handle here)
+                end
+                local c = p.Chatted:Connect(function(msg)
+                    if not active or not currentAnswer then return end
+
+                    local attempt = normalise(msg)
+                    if attempt == currentAnswer then
+                        scores[p] = (scores[p] or 0) + 1
+                        sendChat("✅ " .. getDisplayName(p) .. " got it! +"
+                                 .. "1 (total: " .. scores[p] .. ")")
+                        postLeaderboard()
+                        task.wait(0.5)
+                        askNext()
+                    end
+                end)
+                table.insert(chatConns, c)
+            end
+
+            local function startTrivia()
+                active  = true
+                scores  = {}
+                recentIndices = {}
+                remaining     = {}
+
+                -- Connect all current players
+                for _, p in ipairs(Players:GetPlayers()) do
+                    connectPlayer(p)
+                end
+                -- Connect future joiners
+                playerAddedConn = Players.PlayerAdded:Connect(function(p)
+                    if active then connectPlayer(p) end
+                end)
+
+                sendChat("🎮 Trivia started! Answer in chat. Type _trivia to stop.")
+                task.wait(1)
+                askNext()
+            end
+
+            local function stopTrivia()
+                active        = false
+                currentAnswer = nil
+
+                for _, c in ipairs(chatConns) do c:Disconnect() end
+                chatConns = {}
+
+                if playerAddedConn then
+                    playerAddedConn:Disconnect()
+                    playerAddedConn = nil
+                end
+
+                postLeaderboard()
+                sendChat("🛑 Trivia ended!")
+            end
+
+            return function(_args)
+                if active then
+                    stopTrivia()
+                else
+                    startTrivia()
+                end
+            end
+        end)(),
     },
 
     -- ── ORBIT ─────────────────────────────────────────────────────────────────
