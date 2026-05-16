@@ -485,7 +485,475 @@ local COMMANDS = {
             if hum then hum.Health = 0 end
         end,
     },
+    -- ── FOLLOW PLAYER ─────────────────────────────────────────────────────────
+    {
+        name = "follow",
+        help = "Automatically follow a player",
+        args = "<name>",
+        run  = (function()
+            local conn = nil
 
+            return function(args)
+                local name = args:match("^%s*(.-)%s*$")
+
+                if conn then
+                    conn:Disconnect()
+                    conn = nil
+                end
+
+                local target = nil
+
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.Name:lower():find(name:lower(), 1, true) then
+                        target = p
+                        break
+                    end
+                end
+
+                if not target then
+                    notify("Follow", "Player not found.")
+                    return
+                end
+
+                conn = RunService.RenderStepped:Connect(function()
+                    local hrp = getHRP()
+                    local char = target.Character
+                    local thrp = char and char:FindFirstChild("HumanoidRootPart")
+
+                    if hrp and thrp then
+                        hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
+                    end
+                end)
+
+                notify("Follow", "Now following "..target.Name)
+            end
+        end)(),
+    },
+
+    -- ── UNFOLLOW ──────────────────────────────────────────────────────────────
+    {
+        name = "unfollow",
+        help = "Stop following the current player",
+        args = "",
+        run  = function(_args)
+            if _G.followConn then
+                _G.followConn:Disconnect()
+                _G.followConn = nil
+            end
+
+            notify("Follow", "Stopped following.")
+        end,
+    },
+
+    -- ── TRIVIA GAME ─────────────────────────────────────────────────────────────
+    {
+        name = "trivia",
+        help = "Start/stop trivia game with chat answers + leaderboard",
+        args = "",
+        run  = (function()
+    
+            local active = false
+            local currentAnswer = nil
+            local currentQuestion = nil
+    
+            local scores = {}
+            local questionIndex = 1
+    
+            local questions = {
+                {"What planet is known as the Red Planet?", "mars"},
+                {"How many hearts does an octopus have?", "3"},
+                {"What is 5 + 7?", "12"},
+                {"What is the capital of Australia?", "canberra"},
+                {"What gas do plants breathe in?", "carbon dioxide"},
+                {"What is the largest ocean?", "pacific"},
+                {"What is H2O commonly known as?", "water"},
+                {"How many legs does a spider have?", "8"},
+                {"What year did Roblox release?", "2006"},
+                {"What is the square root of 81?", "9"},
+    
+                {"What is the fastest land animal?", "cheetah"},
+                {"What is the tallest mountain?", "everest"},
+                {"What is the currency of Japan?", "yen"},
+                {"What is 10 x 10?", "100"},
+                {"How many continents are there?", "7"},
+                {"What is the boiling point of water (C)?", "100"},
+                {"What planet is closest to the sun?", "mercury"},
+                {"What color do you get mixing red and blue?", "purple"},
+                {"What is the capital of France?", "paris"},
+                {"How many days in a leap year?", "366"},
+    
+                {"What is the hardest natural substance?", "diamond"},
+                {"What is the biggest mammal?", "blue whale"},
+                {"What language has the most native speakers?", "mandarin"},
+                {"What is 9 x 9?", "81"},
+                {"What is the capital of Italy?", "rome"},
+                {"What organ pumps blood?", "heart"},
+                {"What is the freezing point of water?", "0"},
+                {"What planet has rings?", "saturn"},
+                {"What is the main gas in air?", "nitrogen"},
+                {"How many bones in adult body?", "206"},
+    
+                {"What is the speed of light?", "299792458"},
+                {"What is the capital of Germany?", "berlin"},
+                {"What fruit keeps the doctor away (saying)?", "apple"},
+                {"What is 3 squared?", "9"},
+                {"What is the largest desert?", "sahara"},
+                {"What is the smallest prime number?", "2"},
+                {"What planet is known for rings?", "saturn"},
+                {"What is the capital of Spain?", "madrid"},
+                {"What is 100 divided by 4?", "25"},
+                {"What is the main language in Brazil?", "portuguese"},
+    
+                {"What is the ocean between Africa and Australia?", "indian"},
+                {"What is 15 + 15?", "30"},
+                {"What is the capital of USA?", "washington"},
+                {"What animal is known as king of jungle?", "lion"},
+                {"What is the square root of 144?", "12"},
+                {"What is the largest continent?", "asia"},
+                {"What is the capital of China?", "beijing"},
+                {"What is 7 x 7?", "49"},
+                {"What planet is blue?", "earth"},
+                {"What is the smallest country?", "vatican"},
+    
+                {"What is the chemical symbol for gold?", "au"},
+                {"What is 50 + 50?", "100"},
+                {"What is the capital of Russia?", "moscow"},
+                {"What is the fastest water animal?", "sailfish"},
+                {"What is 2 + 2 x 2?", "6"},
+                {"What is the main source of Earth’s energy?", "sun"},
+                {"What is the capital of India?", "new delhi"},
+                {"What is the longest river?", "nile"},
+            }
+    
+            local function getLeaderboard()
+                local list = {}
+                for p, score in pairs(scores) do
+                    table.insert(list, {name = p.Name, score = score})
+                end
+    
+                table.sort(list, function(a,b)
+                    return a.score > b.score
+                end)
+    
+                return list
+            end
+    
+            local function announceBoard()
+                local board = getLeaderboard()
+                local msg = "🏆 Trivia Leaderboard:\n"
+    
+                for i = 1, math.min(5, #board) do
+                    msg ..= i .. ". " .. board[i].name .. " - " .. board[i].score .. "\n"
+                end
+    
+                game:GetService("ReplicatedStorage")
+                    .DefaultChatSystemChatEvents
+                    .SayMessageRequest:FireServer(msg, "All")
+            end
+    
+            local function nextQuestion()
+                if not active then return end
+    
+                questionIndex += 1
+                if questionIndex > #questions then
+                    questionIndex = 1
+                end
+    
+                local q = questions[questionIndex]
+                currentQuestion = q[1]
+                currentAnswer = q[2]
+    
+                game:GetService("ReplicatedStorage")
+                    .DefaultChatSystemChatEvents
+                    .SayMessageRequest:FireServer("🧠 Trivia: "..currentQuestion, "All")
+            end
+    
+            -- chat listener
+            local chatConn = nil
+    
+            local function startGame()
+                active = true
+                scores = {}
+    
+                notify("Trivia", "Started")
+    
+                chatConn = Players.PlayerChatted:Connect(function(plr, msg)
+                    if not active then return end
+    
+                    msg = msg:lower():gsub("%s+", "")
+    
+                    if currentAnswer and msg == currentAnswer then
+                        scores[plr] = (scores[plr] or 0) + 1
+    
+                        game:GetService("ReplicatedStorage")
+                            .DefaultChatSystemChatEvents
+                            .SayMessageRequest:FireServer(
+                                "✅ "..plr.Name.." got it right! Answer: "..currentAnswer,
+                                "All"
+                            )
+    
+                        announceBoard()
+                        nextQuestion()
+                    end
+                end)
+    
+                nextQuestion()
+            end
+    
+            local function stopGame()
+                active = false
+    
+                if chatConn then
+                    chatConn:Disconnect()
+                    chatConn = nil
+                end
+    
+                announceBoard()
+    
+                notify("Trivia", "Stopped")
+            end
+    
+            return function(_args)
+                if active then
+                    stopGame()
+                else
+                    startGame()
+                end
+            end
+        end)(),
+    },
+
+    -- ── DANCE ─────────────────────────────────────────────────────────────────
+    {
+        name = "dance",
+        help = "Play a random Roblox dance emote",
+        args = "",
+        run  = function(_args)
+            local hum = getHum()
+
+            if hum then
+                hum:LoadAnimation(Instance.new("Animation", hum){
+                    AnimationId = "rbxassetid://507771019"
+                }):Play()
+
+                notify("Dance", "Started dancing.")
+            end
+        end,
+    },
+
+    -- ── ORBIT ─────────────────────────────────────────────────────────────────
+    {
+        name = "orbit",
+        help = "Orbit around a player",
+        args = "<name>",
+        run  = (function()
+            local conn = nil
+            local angle = 0
+
+            return function(args)
+                local name = args:match("^%s*(.-)%s*$")
+
+                if conn then
+                    conn:Disconnect()
+                    conn = nil
+                end
+
+                local target = nil
+
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.Name:lower():find(name:lower(), 1, true) then
+                        target = p
+                        break
+                    end
+                end
+
+                if not target then
+                    notify("Orbit", "Player not found.")
+                    return
+                end
+
+                conn = RunService.RenderStepped:Connect(function(dt)
+                    local hrp = getHRP()
+                    local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+                    if hrp and thrp then
+                        angle += dt * 2
+
+                        local offset = Vector3.new(
+                            math.cos(angle) * 6,
+                            2,
+                            math.sin(angle) * 6
+                        )
+
+                        hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
+                    end
+                end)
+
+                notify("Orbit", "Orbiting "..target.Name)
+            end
+        end)(),
+    },
+
+    -- ── STARE ─────────────────────────────────────────────────────────────────
+    {
+        name = "stare",
+        help = "Continuously look at a player",
+        args = "<name>",
+        run  = (function()
+            local conn = nil
+
+            return function(args)
+                local name = args:match("^%s*(.-)%s*$")
+
+                if conn then
+                    conn:Disconnect()
+                    conn = nil
+                end
+
+                local target = nil
+
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p.Name:lower():find(name:lower(), 1, true) then
+                        target = p
+                        break
+                    end
+                end
+
+                if not target then
+                    notify("Stare", "Player not found.")
+                    return
+                end
+
+                conn = RunService.RenderStepped:Connect(function()
+                    local hrp = getHRP()
+                    local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+                    if hrp and thrp then
+                        hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+                    end
+                end)
+
+                notify("Stare", "Looking at "..target.Name)
+            end
+        end)(),
+    },
+
+    -- ── SPAM ──────────────────────────────────────────────────────────────────
+    {
+        name = "spam",
+        help = "Spam a message into chat",
+        args = "<message>",
+        run  = (function()
+            local active = false
+            local taskLoop = nil
+
+            return function(args)
+                if active then
+                    active = false
+                    notify("Spam", "OFF")
+                    return
+                end
+
+                local msg = tostring(args)
+
+                if msg == "" then
+                    notify("Spam", "Usage: "..PREFIX.."spam <message>")
+                    return
+                end
+
+                active = true
+
+                taskLoop = task.spawn(function()
+                    while active do
+                        game:GetService("ReplicatedStorage")
+                            :FindFirstChild("DefaultChatSystemChatEvents")
+                            .SayMessageRequest:FireServer(msg, "All")
+
+                        task.wait(2)
+                    end
+                end)
+
+                notify("Spam", "ON")
+            end
+        end)(),
+    },
+
+    -- ── JUMPSPIN ──────────────────────────────────────────────────────────────
+    {
+        name = "jumpspin",
+        help = "Spin rapidly while jumping",
+        args = "",
+        run  = function(_args)
+            local hrp = getHRP()
+            local hum = getHum()
+
+            if hrp and hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+
+                for i = 1, 50 do
+                    hrp.CFrame *= CFrame.Angles(0, math.rad(40), 0)
+                    task.wait()
+                end
+
+                notify("JumpSpin", "Completed spin jump.")
+            end
+        end,
+    },
+
+    -- ── FLING ─────────────────────────────────────────────────────────────────
+    {
+        name = "fling",
+        help = "Spin extremely fast for fling physics",
+        args = "",
+        run  = (function()
+            local active = false
+            local conn = nil
+
+            return function(_args)
+                active = not active
+
+                local hrp = getHRP()
+                if not hrp then return end
+
+                if active then
+                    conn = RunService.RenderStepped:Connect(function()
+                        hrp.CFrame *= CFrame.Angles(0, math.rad(150), 0)
+                    end)
+
+                    notify("Fling", "ON")
+                else
+                    if conn then
+                        conn:Disconnect()
+                        conn = nil
+                    end
+
+                    notify("Fling", "OFF")
+                end
+            end
+        end)(),
+    },
+
+    -- ── RANDOMTP ──────────────────────────────────────────────────────────────
+    {
+        name = "randomtp",
+        help = "Teleport to a random spot nearby",
+        args = "",
+        run  = function(_args)
+            local hrp = getHRP()
+
+            if hrp then
+                local offset = Vector3.new(
+                    math.random(-100,100),
+                    math.random(10,40),
+                    math.random(-100,100)
+                )
+
+                hrp.CFrame += offset
+
+                notify("RandomTP", "Teleported randomly.")
+            end
+        end,
+    },
 }   -- ← end of COMMANDS table
 
 -- ════════════════════════════════════════════════════════════════════════════
