@@ -485,64 +485,52 @@ local COMMANDS = {
             if hum then hum.Health = 0 end
         end,
     },
-    -- ── FOLLOW PLAYER ─────────────────────────────────────────────────────────
     {
         name = "follow",
         help = "Automatically follow a player",
         args = "<name>",
-        run  = (function()
+        run = (function()
+            local active = false
             local conn = nil
-
+            local target = nil
+    
             return function(args)
-                local name = args:match("^%s*(.-)%s*$")
-
-                if conn then
-                    conn:Disconnect()
-                    conn = nil
-                end
-
-                local target = nil
-
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Name:lower():find(name:lower(), 1, true) then
-                        target = p
-                        break
+                active = not active
+    
+                if active then
+                    local name = args:match("^%s*(.-)%s*$")
+    
+                    target = nil
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Name:lower():find(name:lower(), 1, true) then
+                            target = p
+                            break
+                        end
                     end
-                end
-
-                if not target then
-                    notify("Follow", "Player not found.")
-                    return
-                end
-
-                conn = RunService.RenderStepped:Connect(function()
-                    local hrp = getHRP()
-                    local char = target.Character
-                    local thrp = char and char:FindFirstChild("HumanoidRootPart")
-
-                    if hrp and thrp then
-                        hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
+    
+                    if not target then
+                        active = false
+                        notify("Follow", "Player not found.")
+                        return
                     end
-                end)
-
-                notify("Follow", "Now following "..target.Name)
+    
+                    conn = RunService.RenderStepped:Connect(function()
+                        local hrp = getHRP()
+                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    
+                        if hrp and thrp then
+                            hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
+                        end
+                    end)
+    
+                    notify("Follow", "ON")
+                else
+                    if conn then conn:Disconnect(); conn = nil end
+                    target = nil
+                    notify("Follow", "OFF")
+                end
             end
         end)(),
-    },
-
-    -- ── UNFOLLOW ──────────────────────────────────────────────────────────────
-    {
-        name = "unfollow",
-        help = "Stop following the current player",
-        args = "",
-        run  = function(_args)
-            if _G.followConn then
-                _G.followConn:Disconnect()
-                _G.followConn = nil
-            end
-
-            notify("Follow", "Stopped following.")
-        end,
     },
 
     -- ── TRIVIA GAME ─────────────────────────────────────────────────────────────
@@ -746,94 +734,104 @@ local COMMANDS = {
         name = "orbit",
         help = "Orbit around a player",
         args = "<name>",
-        run  = (function()
+        run = (function()
+            local active = false
             local conn = nil
+            local target = nil
             local angle = 0
-
+    
             return function(args)
-                local name = args:match("^%s*(.-)%s*$")
-
-                if conn then
-                    conn:Disconnect()
-                    conn = nil
-                end
-
-                local target = nil
-
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Name:lower():find(name:lower(), 1, true) then
-                        target = p
-                        break
+                active = not active
+    
+                if active then
+                    local name = args:match("^%s*(.-)%s*$")
+    
+                    target = nil
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Name:lower():find(name:lower(), 1, true) then
+                            target = p
+                            break
+                        end
                     end
-                end
-
-                if not target then
-                    notify("Orbit", "Player not found.")
-                    return
-                end
-
-                conn = RunService.RenderStepped:Connect(function(dt)
-                    local hrp = getHRP()
-                    local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-
-                    if hrp and thrp then
-                        angle += dt * 2
-
-                        local offset = Vector3.new(
-                            math.cos(angle) * 6,
-                            2,
-                            math.sin(angle) * 6
-                        )
-
-                        hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
+    
+                    if not target then
+                        active = false
+                        notify("Orbit", "Player not found.")
+                        return
                     end
-                end)
-
-                notify("Orbit", "Orbiting "..target.Name)
+    
+                    conn = RunService.RenderStepped:Connect(function(dt)
+                        local hrp = getHRP()
+                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    
+                        if hrp and thrp then
+                            angle += dt * 2
+    
+                            local offset = Vector3.new(
+                                math.cos(angle) * 6,
+                                2,
+                                math.sin(angle) * 6
+                            )
+    
+                            hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
+                        end
+                    end)
+    
+                    notify("Orbit", "ON")
+                else
+                    if conn then conn:Disconnect(); conn = nil end
+                    target = nil
+                    angle = 0
+                    notify("Orbit", "OFF")
+                end
             end
         end)(),
     },
-
     -- ── STARE ─────────────────────────────────────────────────────────────────
     {
         name = "stare",
         help = "Continuously look at a player",
         args = "<name>",
-        run  = (function()
+        run = (function()
+            local active = false
             local conn = nil
-
+            local target = nil
+    
             return function(args)
-                local name = args:match("^%s*(.-)%s*$")
-
-                if conn then
-                    conn:Disconnect()
-                    conn = nil
-                end
-
-                local target = nil
-
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.Name:lower():find(name:lower(), 1, true) then
-                        target = p
-                        break
+                active = not active
+    
+                if active then
+                    local name = args:match("^%s*(.-)%s*$")
+    
+                    target = nil
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Name:lower():find(name:lower(), 1, true) then
+                            target = p
+                            break
+                        end
                     end
-                end
-
-                if not target then
-                    notify("Stare", "Player not found.")
-                    return
-                end
-
-                conn = RunService.RenderStepped:Connect(function()
-                    local hrp = getHRP()
-                    local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-
-                    if hrp and thrp then
-                        hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+    
+                    if not target then
+                        active = false
+                        notify("Stare", "Player not found.")
+                        return
                     end
-                end)
-
-                notify("Stare", "Looking at "..target.Name)
+    
+                    conn = RunService.RenderStepped:Connect(function()
+                        local hrp = getHRP()
+                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    
+                        if hrp and thrp then
+                            hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+                        end
+                    end)
+    
+                    notify("Stare", "ON")
+                else
+                    if conn then conn:Disconnect(); conn = nil end
+                    target = nil
+                    notify("Stare", "OFF")
+                end
             end
         end)(),
     },
@@ -843,37 +841,35 @@ local COMMANDS = {
         name = "spam",
         help = "Spam a message into chat",
         args = "<message>",
-        run  = (function()
+        run = (function()
             local active = false
-            local taskLoop = nil
-
+    
             return function(args)
+                active = not active
+    
                 if active then
-                    active = false
-                    notify("Spam", "OFF")
-                    return
-                end
-
-                local msg = tostring(args)
-
-                if msg == "" then
-                    notify("Spam", "Usage: "..PREFIX.."spam <message>")
-                    return
-                end
-
-                active = true
-
-                taskLoop = task.spawn(function()
-                    while active do
-                        game:GetService("ReplicatedStorage")
-                            :FindFirstChild("DefaultChatSystemChatEvents")
-                            .SayMessageRequest:FireServer(msg, "All")
-
-                        task.wait(2)
+                    local msg = tostring(args)
+    
+                    if msg == "" then
+                        active = false
+                        notify("Spam", "Invalid message")
+                        return
                     end
-                end)
-
-                notify("Spam", "ON")
+    
+                    task.spawn(function()
+                        while active do
+                            game:GetService("ReplicatedStorage")
+                                .DefaultChatSystemChatEvents
+                                .SayMessageRequest:FireServer(msg, "All")
+    
+                            task.wait(2)
+                        end
+                    end)
+    
+                    notify("Spam", "ON")
+                else
+                    notify("Spam", "OFF")
+                end
             end
         end)(),
     },
@@ -903,30 +899,26 @@ local COMMANDS = {
     -- ── FLING ─────────────────────────────────────────────────────────────────
     {
         name = "fling",
-        help = "Spin extremely fast for fling physics",
+        help = "Spin extremely fast",
         args = "",
-        run  = (function()
+        run = (function()
             local active = false
             local conn = nil
-
-            return function(_args)
+    
+            return function()
                 active = not active
-
+    
                 local hrp = getHRP()
                 if not hrp then return end
-
+    
                 if active then
                     conn = RunService.RenderStepped:Connect(function()
                         hrp.CFrame *= CFrame.Angles(0, math.rad(150), 0)
                     end)
-
+    
                     notify("Fling", "ON")
                 else
-                    if conn then
-                        conn:Disconnect()
-                        conn = nil
-                    end
-
+                    if conn then conn:Disconnect(); conn = nil end
                     notify("Fling", "OFF")
                 end
             end
