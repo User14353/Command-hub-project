@@ -520,61 +520,59 @@ local COMMANDS = {
         help = "Automatically follow a player",
         args = "<name>",
         run = (function()
-            local active = false
-            local conn = nil
-            local target = nil
-    
-            return function(args)
-                active = not active
-    
-            if active then
-                local name = args:match("^%s*(.-)%s*$")
-                local query = name:lower()
-            
-                target = nil
-            
-                -- pass 1: DisplayName only
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.DisplayName:lower():find(query, 1, true) then
-                        target = p
-                        break
-                    end
-                end
-            
-                -- pass 2: Username fallback
-                if not target then
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(query, 1, true) then
-                            target = p
-                            break
-                        end
-                    end
-                end
-            end
-    
-                    if not target then
-                        active = false
-                        notify("Follow", "Player not found.")
-                        return
-                    end
-    
-                    conn = RunService.RenderStepped:Connect(function()
-                        local hrp = getHRP()
-                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    
-                        if hrp and thrp then
-                            hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
-                        end
-                    end)
-    
-                    notify("Follow", "ON")
-                else
-                    if conn then conn:Disconnect(); conn = nil end
-                    target = nil
-                    notify("Follow", "OFF")
-                end
-            end
-        end)(),
+						active = not active
+
+						if active then
+								local name = args:match("^%s*(.-)%s*$")
+								local query = name:lower()
+
+								target = nil
+
+								-- pass 1: DisplayName only
+								for _, p in ipairs(Players:GetPlayers()) do
+										if p.DisplayName:lower():find(query, 1, true) then
+												target = p
+												break
+										end
+								end
+
+								-- pass 2: Username fallback
+								if not target then
+										for _, p in ipairs(Players:GetPlayers()) do
+												if p.Name:lower():find(query, 1, true) then
+														target = p
+														break
+												end
+										end
+								end
+
+								if not target then
+										active = false
+										notify("Follow", "Player not found.")
+										return
+								end
+
+								conn = RunService.RenderStepped:Connect(function()
+										local hrp = getHRP()
+										local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+										if hrp and thrp then
+												hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3)
+										end
+								end)
+
+								notify("Follow", "ON")
+
+						else
+								if conn then
+										conn:Disconnect()
+										conn = nil
+								end
+
+								target = nil
+								notify("Follow", "OFF")
+						end
+				end)(),
     },
 
     -- ── TRIVIA GAME ─────────────────────────────────────────────────────────────
@@ -675,7 +673,7 @@ local COMMANDS = {
             local function nextQuestion()
                 if not active then return end
     
-                questionIndex += 1
+                questionIndex = questionIndex + 1
                 if questionIndex > #questions then
                     questionIndex = 1
                 end
@@ -703,7 +701,7 @@ local COMMANDS = {
                 local msg = "🏆 Trivia Leaderboard:\n"
     
                 for i = 1, math.min(5, #list) do
-                    msg ..= i..". "..list[i].name.." - "..list[i].score.."\n"
+                    msg = msg .. i .. ". " .. list[i].name .. " - " .. list[i].score .. "\n"
                 end
     
                 say(msg)
@@ -776,104 +774,33 @@ local COMMANDS = {
     },
 
     -- ── ORBIT ─────────────────────────────────────────────────────────────────
-    {
-        name = "orbit",
-        help = "Orbit around a player",
-        args = "<name>",
-        run = (function()
-            local active = false
-            local conn = nil
-            local target = nil
-            local angle = 0
-    
-            return function(args)
-                active = not active
-    
-            if active then
-                local name = args:match("^%s*(.-)%s*$")
-                local query = name:lower()
-            
-                target = nil
-            
-                -- pass 1: DisplayName only
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p.DisplayName:lower():find(query, 1, true) then
-                        target = p
-                        break
-                    end
-                end
-            
-                -- pass 2: Username fallback
-                if not target then
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Name:lower():find(query, 1, true) then
-                            target = p
-                            break
-                        end
-                    end
-                end
-            end
-    
-                    if not target then
-                        active = false
-                        notify("Orbit", "Player not found.")
-                        return
-                    end
-    
-                    conn = RunService.RenderStepped:Connect(function(dt)
-                        local hrp = getHRP()
-                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    
-                        if hrp and thrp then
-                            angle += dt * 2
-    
-                            local offset = Vector3.new(
-                                math.cos(angle) * 6,
-                                2,
-                                math.sin(angle) * 6
-                            )
-    
-                            hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
-                        end
-                    end)
-    
-                    notify("Orbit", "ON")
-                else
-                    if conn then conn:Disconnect(); conn = nil end
-                    target = nil
-                    angle = 0
-                    notify("Orbit", "OFF")
-                end
-            end
-        end)(),
-    },
-    -- ── STARE ─────────────────────────────────────────────────────────────────
-    {
-        name = "stare",
-        help = "Continuously look at a player",
-        args = "<name>",
-        run = (function()
-            local active = false
-            local conn = nil
-            local target = nil
-    
-            return function(args)
-                active = not active
-    
+		{
+				name = "orbit",
+				help = "Orbit around a player",
+				args = "<name>",
+				run = (function()
+						local active = false
+						local conn = nil
+						local target = nil
+						local angle = 0
+
+						return function(args)
+								active = not active
+
 								if active then
-										local name = args:match("^%s*(.-)%s*$")
+										local name = (args or ""):match("^%s*(.-)%s*$")
 										local query = name:lower()
-								
+
 										target = nil
-								
-										-- pass 1: DisplayName only
+
+										-- pass 1: DisplayName
 										for _, p in ipairs(Players:GetPlayers()) do
 												if p.DisplayName:lower():find(query, 1, true) then
 														target = p
 														break
 												end
 										end
-								
+
 										-- pass 2: Username fallback
 										if not target then
 												for _, p in ipairs(Players:GetPlayers()) do
@@ -883,32 +810,111 @@ local COMMANDS = {
 														end
 												end
 										end
+
+										if not target then
+												active = false
+												notify("Orbit", "Player not found.")
+												return
+										end
+
+										conn = RunService.RenderStepped:Connect(function(dt)
+												local hrp = getHRP()
+												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+												if hrp and thrp then
+														angle = angle + dt * 2
+
+														local offset = Vector3.new(
+																math.cos(angle) * 6,
+																2,
+																math.sin(angle) * 6
+														)
+
+														hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
+												end
+										end)
+
+										notify("Orbit", "ON")
+
+								else
+										if conn then
+												conn:Disconnect()
+												conn = nil
+										end
+
+										target = nil
+										angle = 0
+										notify("Orbit", "OFF")
 								end
-    
-                    if not target then
-                        active = false
-                        notify("Stare", "Player not found.")
-                        return
-                    end
-    
-                    conn = RunService.RenderStepped:Connect(function()
-                        local hrp = getHRP()
-                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-    
-                        if hrp and thrp then
-                            hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
-                        end
-                    end)
-    
-                    notify("Stare", "ON")
-                else
-                    if conn then conn:Disconnect(); conn = nil end
-                    target = nil
-                    notify("Stare", "OFF")
-                end
-            end
-        end)(),
-    },
+						end
+				end)(),
+		},
+    -- ── STARE ─────────────────────────────────────────────────────────────────
+		{
+				name = "stare",
+				help = "Continuously look at a player",
+				args = "<name>",
+				run = (function()
+						local active = false
+						local conn = nil
+						local target = nil
+
+						return function(args)
+								active = not active
+
+								if active then
+										local name = (args or ""):match("^%s*(.-)%s*$")
+										local query = name:lower()
+
+										target = nil
+
+										-- pass 1: DisplayName
+										for _, p in ipairs(Players:GetPlayers()) do
+												if p.DisplayName:lower():find(query, 1, true) then
+														target = p
+														break
+												end
+										end
+
+										-- pass 2: Username fallback
+										if not target then
+												for _, p in ipairs(Players:GetPlayers()) do
+														if p.Name:lower():find(query, 1, true) then
+																target = p
+																break
+														end
+												end
+										end
+
+										if not target then
+												active = false
+												notify("Stare", "Player not found.")
+												return
+										end
+
+										conn = RunService.RenderStepped:Connect(function()
+												local hrp = getHRP()
+												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+												if hrp and thrp then
+														hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+												end
+										end)
+
+										notify("Stare", "ON")
+
+								else
+										if conn then
+												conn:Disconnect()
+												conn = nil
+										end
+
+										target = nil
+										notify("Stare", "OFF")
+								end
+						end
+				end)(),
+		},
 
     -- ── SPAM ──────────────────────────────────────────────────────────────────
     {
@@ -961,7 +967,7 @@ local COMMANDS = {
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
 
                 for i = 1, 50 do
-                    hrp.CFrame *= CFrame.Angles(0, math.rad(40), 0)
+                    hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(40), 0)
                     task.wait()
                 end
 
@@ -987,7 +993,7 @@ local COMMANDS = {
     
                 if active then
                     conn = RunService.RenderStepped:Connect(function()
-                        hrp.CFrame *= CFrame.Angles(0, math.rad(150), 0)
+                        hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(150), 0)
                     end)
     
                     notify("Fling", "ON")
@@ -1014,7 +1020,7 @@ local COMMANDS = {
                     math.random(-100,100)
                 )
 
-                hrp.CFrame += offset
+                hrp.CFrame = hrp.CFrame + offset
 
                 notify("RandomTP", "Teleported randomly.")
             end
