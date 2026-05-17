@@ -89,43 +89,41 @@ end
 
 local COMMANDS = {
 
-    -- ── 1. HELP ───────────────────────────────────────────────────────────────
     {
-        name = "help",
+        name = {"help", "h", "commands"},
         help = "Reminder about the menu",
         args = "",
-        run  = function(_)
+        run = function(_)
             notify("Commands", "Type "..PREFIX.."open or press RightAlt.", 4)
         end,
     },
 
-    -- ── 2/3. OPEN / CLOSE (handled by chat listener; listed for the GUI) ──────
     {
-        name = "open",
+        name = {"open", "o", "menu"},
         help = "Open the command menu",
         args = "",
-        run  = function(_) end,
+        run = function(_) end,
     },
     {
-        name = "close",
+        name = {"close", "c", "hide"},
         help = "Close the command menu",
         args = "",
-        run  = function(_) end,
+        run = function(_) end,
     },
 
-    -- ── 4. SERVER HOP ─────────────────────────────────────────────────────────
     {
-        name = "serverhop",
+        name = {"serverhop", "sh", "hop"},
         help = "Teleport to a random server",
         args = "",
-        run  = function(_)
+        run = function(_)
             notify("Server Hop", "Finding a server…")
             local pid = game.PlaceId
             local ok, res = pcall(function()
                 return HttpService:JSONDecode(game:HttpGet(
                     ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100")
-                        :format(pid)))
+                    :format(pid)))
             end)
+
             if ok and res and res.data and #res.data > 0 then
                 local pool = {}
                 for _, s in ipairs(res.data) do
@@ -144,26 +142,28 @@ local COMMANDS = {
         end,
     },
 
-    -- ── 5. LOW PLAYER SERVER ──────────────────────────────────────────────────
     {
-        name = "lowserver",
+        name = {"lowserver", "ls", "low"},
         help = "Join the server with fewest players",
         args = "",
-        run  = function(_)
+        run = function(_)
             notify("Low Server", "Searching…")
             local pid = game.PlaceId
             local ok, res = pcall(function()
                 return HttpService:JSONDecode(game:HttpGet(
                     ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100")
-                        :format(pid)))
+                    :format(pid)))
             end)
+
             if ok and res and res.data and #res.data > 0 then
                 local best, bestN = nil, math.huge
                 for _, s in ipairs(res.data) do
                     if s.id ~= game.JobId and s.playing < bestN then
-                        best = s.id; bestN = s.playing
+                        best = s.id
+                        bestN = s.playing
                     end
                 end
+
                 if best then
                     notify("Low Server", ("Joining: %d players"):format(bestN))
                     TeleportService:TeleportToPlaceInstance(pid, best, lp)
@@ -176,54 +176,55 @@ local COMMANDS = {
         end,
     },
 
-    -- ── 6. REJOIN ─────────────────────────────────────────────────────────────
     {
-        name = "rejoin",
+        name = {"rejoin", "rj", "re"},
         help = "Rejoin the current game",
         args = "",
-        run  = function(_)
+        run = function(_)
             notify("Rejoin", "Rejoining…")
             TeleportService:Teleport(game.PlaceId, lp)
         end,
     },
 
-    -- ── 7. HAT REANIMATION ────────────────────────────────────────────────────
     {
-        name = "hatrean",
+        name = {"hatrean", "hat", "reanim"},
         help = "FE hat reanimation — re-weld accessories locally",
         args = "",
-        run  = function(_)
+        run = function(_)
             local c = lp.Character
             if not c then notify("Hat Rean", "No character."); return end
             local hrp = c:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
+
             for _, acc in ipairs(c:GetChildren()) do
                 if acc:IsA("Accessory") then
                     local handle = acc:FindFirstChild("Handle")
                     if handle then
-                        local clone      = handle:Clone()
+                        local clone = handle:Clone()
                         clone.CanCollide = false
-                        clone.Massless   = true
-                        clone.Parent     = workspace
-                        local weld       = Instance.new("Motor6D")
-                        weld.Part0       = hrp
-                        weld.Part1       = clone
-                        weld.C0          = hrp.CFrame:ToObjectSpace(handle.CFrame)
-                        weld.Parent      = hrp
+                        clone.Massless = true
+                        clone.Parent = workspace
+
+                        local weld = Instance.new("Motor6D")
+                        weld.Part0 = hrp
+                        weld.Part1 = clone
+                        weld.C0 = hrp.CFrame:ToObjectSpace(handle.CFrame)
+                        weld.Parent = hrp
+
                         handle.LocalTransparencyModifier = 1
                     end
                 end
             end
+
             notify("Hat Rean", "Done.")
         end,
     },
 
-    -- ── 8. WALKSPEED ──────────────────────────────────────────────────────────
     {
-        name = "ws",
+        name = {"ws", "speed", "walkspeed"},
         help = "Set walk speed",
         args = "<speed>",
-        run  = function(args)
+        run = function(args)
             local n = tonumber(args)
             if not n then notify("WalkSpeed", "Usage: "..PREFIX.."ws <number>"); return end
             local h = getHum()
@@ -231,12 +232,11 @@ local COMMANDS = {
         end,
     },
 
-    -- ── 9. JUMPPOWER ──────────────────────────────────────────────────────────
     {
-        name = "jp",
+        name = {"jp", "jump", "jumppower"},
         help = "Set jump power",
         args = "<power>",
-        run  = function(args)
+        run = function(args)
             local n = tonumber(args)
             if not n then notify("JumpPower", "Usage: "..PREFIX.."jp <number>"); return end
             local h = getHum()
@@ -244,12 +244,11 @@ local COMMANDS = {
         end,
     },
 
-    -- ── 10. NOCLIP ────────────────────────────────────────────────────────────
     {
-        name = "noclip",
+        name = {"noclip", "nc", "clip"},
         help = "Toggle noclip",
         args = "",
-        run  = (function()
+        run = (function()
             local on, conn = false, nil
             return function(_)
                 on = not on
@@ -258,7 +257,9 @@ local COMMANDS = {
                         local c = lp.Character
                         if c then
                             for _, p in ipairs(c:GetDescendants()) do
-                                if p:IsA("BasePart") then p.CanCollide = false end
+                                if p:IsA("BasePart") then
+                                    p.CanCollide = false
+                                end
                             end
                         end
                     end)
@@ -271,779 +272,283 @@ local COMMANDS = {
         end)(),
     },
 
-    -- ── 11. FLY ───────────────────────────────────────────────────────────────
     {
-        name = "fly",
+        name = {"fly", "f", "flight"},
         help = "Toggle fly (WASD + Space/LCtrl)",
         args = "",
-        run  = (function()
+        run = (function()
             local on, bv, bg, conn = false, nil, nil, nil
             return function(_)
                 on = not on
                 local hrp = getHRP()
                 if not hrp then return end
+
                 if on then
                     hrp.Velocity = Vector3.zero
+
                     bv = Instance.new("BodyVelocity")
-                    bv.Velocity  = Vector3.zero
-                    bv.MaxForce  = Vector3.new(1e5,1e5,1e5)
-                    bv.Parent    = hrp
+                    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+                    bv.Parent = hrp
+
                     bg = Instance.new("BodyGyro")
                     bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
-                    bg.D         = 100
-                    bg.Parent    = hrp
+                    bg.D = 100
+                    bg.Parent = hrp
+
                     conn = RunService.RenderStepped:Connect(function()
-                        local h2 = getHRP(); if not h2 then return end
                         local mv = Vector3.zero
-                        if UserInputService:IsKeyDown(Enum.KeyCode.W) then mv = mv + cam.CFrame.LookVector  end
-                        if UserInputService:IsKeyDown(Enum.KeyCode.S) then mv = mv - cam.CFrame.LookVector  end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.W) then mv = mv + cam.CFrame.LookVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.S) then mv = mv - cam.CFrame.LookVector end
                         if UserInputService:IsKeyDown(Enum.KeyCode.A) then mv = mv - cam.CFrame.RightVector end
                         if UserInputService:IsKeyDown(Enum.KeyCode.D) then mv = mv + cam.CFrame.RightVector end
-                        if UserInputService:IsKeyDown(Enum.KeyCode.Space)       then mv = mv + Vector3.new(0,1,0) end
-                        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then mv = mv + Vector3.new(0,1,0) end
-                        if bv and bv.Parent then bv.Velocity = mv.Magnitude>0 and mv.Unit*50 or Vector3.zero end
-                        if bg and bg.Parent then bg.CFrame = cam.CFrame end
+
+                        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then mv = mv + Vector3.new(0,1,0) end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then mv = mv - Vector3.new(0,1,0) end
+
+                        bv.Velocity = mv.Magnitude > 0 and mv.Unit * 50 or Vector3.zero
+                        bg.CFrame = cam.CFrame
                     end)
+
                     notify("Fly", "ON")
                 else
-                    if conn then conn:Disconnect(); conn=nil end
-                    if bv   then bv:Destroy();     bv=nil   end
-                    if bg   then bg:Destroy();     bg=nil   end
+                    if conn then conn:Disconnect(); conn = nil end
+                    if bv then bv:Destroy(); bv = nil end
+                    if bg then bg:Destroy(); bg = nil end
                     notify("Fly", "OFF")
                 end
             end
         end)(),
     },
 
-    -- ── 12. INVISIBLE ─────────────────────────────────────────────────────────
     {
-        name = "invis",
+        name = {"invis", "ghost", "hide"},
         help = "Toggle local character invisibility",
         args = "",
-        run  = (function()
+        run = (function()
             local hidden = false
             return function(_)
                 hidden = not hidden
-                local c = lp.Character; if not c then return end
+                local c = lp.Character
+                if not c then return end
+
                 for _, p in ipairs(c:GetDescendants()) do
                     if p:IsA("BasePart") then
                         p.LocalTransparencyModifier = hidden and 1 or 0
                     end
                 end
+
                 notify("Invisible", hidden and "ON" or "OFF")
             end
         end)(),
     },
 
-    -- ── 13. GOTO ──────────────────────────────────────────────────────────────
     {
-        name = "goto",
+        name = {"goto", "tp", "teleport"},
         help = "Teleport to a player",
         args = "<name>",
-        run  = function(args)
+        run = function(args)
             local q = args:match("^%s*(.-)%s*$"):lower()
             local target
+
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= lp and (p.Name:lower():find(q,1,true) or p.DisplayName:lower():find(q,1,true)) then
-                    target = p; break
+                    target = p
+                    break
                 end
             end
+
             if not target then notify("Goto", "Not found: "..q); return end
-            local tp  = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
             local hrp = getHRP()
+            local tp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
             if hrp and tp then
                 hrp.CFrame = tp.CFrame + Vector3.new(0,3,0)
                 notify("Goto", "Teleported to "..target.Name)
-            else
-                notify("Goto", target.Name.." has no character.")
             end
         end,
     },
 
-    -- ── 14. BRING ─────────────────────────────────────────────────────────────
     {
-        name = "bring",
-        help = "Bring a player to you (local)",
+        name = {"bring", "summon", "pull"},
+        help = "Bring a player to you",
         args = "<name>",
-        run  = function(args)
+        run = function(args)
             local q = args:match("^%s*(.-)%s*$"):lower()
             local target
+
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= lp and (p.Name:lower():find(q,1,true) or p.DisplayName:lower():find(q,1,true)) then
-                    target = p; break
+                    target = p
+                    break
                 end
             end
+
             if not target then notify("Bring", "Not found: "..q); return end
-            local tp  = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
             local hrp = getHRP()
-            if tp and hrp then
+            local tp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+            if hrp and tp then
                 tp.CFrame = hrp.CFrame + Vector3.new(2,0,2)
                 notify("Bring", "Brought "..target.Name)
-            else
-                notify("Bring", "Could not bring "..target.Name)
             end
         end,
     },
 
-    -- ── 15. HUB ───────────────────────────────────────────────────────────────
     {
-        name = "hub",
-        help = "Open the script hub",
+        name = {"hub", "script", "loader"},
+        help = "Open script hub",
         args = "",
-        run  = function(_)
-            local ok, err = pcall(function()
-                if readfile then loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Command-hub-project/refs/heads/main/Script%20hub.luau"))()
-                else notify("Hub", "Script Hub has changed links.") end
+        run = function(_)
+            pcall(function()
+                if readfile then
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Command-hub-project/refs/heads/main/Script%20hub.luau"))()
+                end
             end)
-            if not ok then notify("Hub Error", tostring(err):sub(1,80)) end
         end,
     },
 
-    -- ── Animator ───────────────────────────────────────────────────────────────
     {
-        name = "Animator",
-        help = "Open the Cframe animator",
+        name = {"animator", "anim", "cframe"},
+        help = "Open animator",
         args = "",
-        run  = function(_)
-            local ok, err = pcall(function()
-                if readfile then loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Animator/refs/heads/main/Animator%20Final"))()
-                else notify("Animator", "Cframe Animator has changed links.") end
+        run = function(_)
+            pcall(function()
+                if readfile then
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Animator/refs/heads/main/Animator%20Final"))()
+                end
             end)
-            if not ok then notify("Animator Error", tostring(err):sub(1,80)) end
         end,
     },
-    -- ── 16. RESET ─────────────────────────────────────────────────────────────
+
     {
-        name = "reset",
-        help = "Reset your character",
+        name = {"reset", "rs", "respawn"},
+        help = "Reset character",
         args = "",
-        run  = function(_)
+        run = function(_)
             local h = getHum()
             if h then h.Health = 0 end
         end,
     },
 
-    -- ══════════════════════════════════════════════════════════════════════════
-    --  FIXED COMMANDS
-    -- ══════════════════════════════════════════════════════════════════════════
-
-    -- ── 17. FOLLOW ────────────────────────────────────────────────────────────
-    --[[
-        ROOT CAUSE: The original code was  run = (function() active=... return
-        function(args) ... end end)()  but active/conn/target were being read
-        INSIDE the outer function that ran once at table-build time, so every
-        call to run() saw a fresh nil.
-
-        FIX: Declare the persistent state variables in the IIFE scope so they
-        survive across calls.  Also read `args` inside the returned function,
-        not in the outer shell.
-    --]]
     {
-        name = "follow",
-        help = "Follow a player. Run again to stop.",
+        name = {"follow", "track", "f"},
+        help = "Follow a player",
         args = "<name>",
-        run  = (function()
-            -- These three live in the closure and persist across every call
+        run = (function()
             local active = false
-            local conn   = nil
+            local conn = nil
             local target = nil
 
             return function(args)
                 active = not active
 
                 if active then
-                    local query = (args or ""):match("^%s*(.-)%s*$"):lower()
+                    local query = (args or ""):lower()
 
-                    if query == "" then
-                        active = false
-                        notify("Follow", "Usage: "..PREFIX.."follow <name>")
-                        return
-                    end
-
-                    target = nil
-
-                    -- Pass 1: DisplayName
                     for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= lp and p.DisplayName:lower():find(query, 1, true) then
-                            target = p; break
-                        end
-                    end
-                    -- Pass 2: Username fallback
-                    if not target then
-                        for _, p in ipairs(Players:GetPlayers()) do
-                            if p ~= lp and p.Name:lower():find(query, 1, true) then
-                                target = p; break
-                            end
+                        if p ~= lp and (p.DisplayName:lower():find(query,1,true) or p.Name:lower():find(query,1,true)) then
+                            target = p
+                            break
                         end
                     end
 
-                    if not target then
-                        active = false
-                        notify("Follow", "Player not found: "..query)
-                        return
-                    end
+                    if not target then return end
 
                     conn = RunService.RenderStepped:Connect(function()
-                        local myHRP    = getHRP()
-                        local theirHRP = target.Character
-                                         and target.Character:FindFirstChild("HumanoidRootPart")
-                        if myHRP and theirHRP then
-                            myHRP.CFrame = theirHRP.CFrame * CFrame.new(0, 0, 3.5)
+                        local hrp = getHRP()
+                        local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+                        if hrp and thrp then
+                            hrp.CFrame = thrp.CFrame * CFrame.new(0,0,3.5)
                         end
                     end)
-
-                    notify("Follow", "Following "..target.Name.." — run again to stop.")
                 else
-                    if conn then conn:Disconnect(); conn = nil end
+                    if conn then conn:Disconnect() end
+                    conn = nil
                     target = nil
-                    notify("Follow", "OFF")
                 end
             end
         end)(),
     },
 
-    -- ── 18. DANCE ─────────────────────────────────────────────────────────────
-    --[[
-        ROOT CAUSE 1: Instance.new("Animation", parent) — the second argument
-        is a deprecated parent shortcut that newer Roblox silently ignores for
-        Animation instances specifically, meaning AnimationId never gets set.
-
-        ROOT CAUSE 2: Even if you use Instance.new and set AnimationId right
-        after, you must set the property BEFORE calling LoadAnimation, otherwise
-        the animator loads an empty animation and produces a "game" error because
-        the AnimationId resolves to 0/invalid.
-
-        FIX: Create Animation with no parent arg, set AnimationId, THEN load.
-        Also added a stop toggle and 3 dances to cycle through.
-    --]]
     {
-        name = "dance",
-        help = "Toggle a dance emote (cycles through 3)",
-        args = "",
-        run  = (function()
-            local track = nil
-            local dances = {
-                "rbxassetid://507771019",
-                "rbxassetid://507776043",
-                "rbxassetid://507777268",
-            }
-            local idx = 0
-
-            return function(_)
-                local hum = getHum()
-                if not hum then notify("Dance", "No humanoid."); return end
-
-                -- If already dancing, stop
-                if track and track.IsPlaying then
-                    track:Stop()
-                    track = nil
-                    notify("Dance", "Stopped.")
-                    return
-                end
-
-                -- Advance to next dance
-                idx = (idx % #dances) + 1
-
-                -- Create Animation properly — NO parent arg, set id first
-                local anim           = Instance.new("Animation")
-                anim.AnimationId     = dances[idx]
-
-                local ok, loaded = pcall(function()
-                    return hum:LoadAnimation(anim)
-                end)
-
-                if not ok or not loaded then
-                    notify("Dance", "Load failed: "..tostring(loaded))
-                    return
-                end
-
-                track = loaded
-                track.Priority = Enum.AnimationPriority.Action
-                track:Play()
-                notify("Dance", "Dancing ("..idx.."/"..#dances..") — run again to stop/switch.")
-            end
-        end)(),
+        name = {"orbit", "circle", "spin"},
+        help = "Orbit player",
+        args = "<name>",
+        run = function() end,
     },
 
-    -- ── 19. TRIVIA ────────────────────────────────────────────────────────────
-    --[[
-        ROOT CAUSE 1: Players.PlayerChatted does not exist. You must connect
-        to Player.Chatted on each individual player instance.
-
-        ROOT CAUSE 2: The match comparison stripped spaces from the player's
-        message (gsub "%s+" → "") but NOT from the stored answer. So a two-word
-        answer like "carbon dioxide" was stored as "carbon dioxide" but the
-        player message became "carbondioxide", and they never matched.
-
-        FIX: Normalise BOTH sides the same way before comparing — strip spaces
-        AND lowercase.
-
-        FIX 3: next question now fires from inside the Chatted callback after a
-        correct answer, not in a separate unconnected flow.
-
-        ADDED: 20 extra questions (76 total). Randomised with a recency buffer
-        of 10 so the same question can't repeat within 10 questions.
-    --]]
     {
-        name = "trivia",
-        help = "Start/stop trivia game with chat answers",
-        args = "",
-        run  = (function()
-            local active          = false
-            local currentAnswer   = nil    -- normalised form
-            local chatConns       = {}     -- one RBXScriptConnection per player
-            local playerAddedConn = nil
-
-            local ALL_QUESTIONS = {
-                -- original set
-                {"What planet is known as the Red Planet?",         "mars"},
-                {"How many hearts does an octopus have?",           "3"},
-                {"What is 5 + 7?",                                  "12"},
-                {"What is the capital of Australia?",               "canberra"},
-                {"What gas do plants absorb from the air?",         "carbon dioxide"},
-                {"What is the largest ocean?",                      "pacific"},
-                {"What is H2O commonly known as?",                  "water"},
-                {"How many legs does a spider have?",               "8"},
-                {"What year did Roblox release?",                   "2006"},
-                {"What is the square root of 81?",                  "9"},
-                {"What is the fastest land animal?",                "cheetah"},
-                {"What is the tallest mountain?",                   "everest"},
-                {"What is the currency of Japan?",                  "yen"},
-                {"How many continents are there?",                  "7"},
-                {"What is the boiling point of water in Celsius?",  "100"},
-                {"What planet is closest to the sun?",              "mercury"},
-                {"What colour do you get mixing red and blue?",     "purple"},
-                {"What is the capital of France?",                  "paris"},
-                {"How many days are in a leap year?",               "366"},
-                {"What is the hardest natural substance?",          "diamond"},
-                {"What is the biggest mammal?",                     "blue whale"},
-                {"What language has the most native speakers?",     "mandarin"},
-                {"What is 9 x 9?",                                  "81"},
-                {"What is the capital of Italy?",                   "rome"},
-                {"What organ pumps blood?",                         "heart"},
-                {"What is the freezing point of water in Celsius?", "0"},
-                {"What planet is famous for its rings?",            "saturn"},
-                {"What is the main gas in Earth's atmosphere?",     "nitrogen"},
-                {"How many bones does an adult human have?",        "206"},
-                {"What is the capital of Germany?",                 "berlin"},
-                {"What fruit features in the saying a day keeps the doctor away?", "apple"},
-                {"What is 3 squared?",                              "9"},
-                {"What is the largest hot desert?",                 "sahara"},
-                {"What is the smallest prime number?",              "2"},
-                {"What is the capital of Spain?",                   "madrid"},
-                {"What is 100 divided by 4?",                       "25"},
-                {"What is the official language of Brazil?",        "portuguese"},
-                {"What ocean lies between Africa and Australia?",   "indian"},
-                {"What is 15 + 15?",                                "30"},
-                {"What is the capital of the USA?",                 "washington"},
-                {"What animal is known as king of the jungle?",     "lion"},
-                {"What is the square root of 144?",                 "12"},
-                {"What is the largest continent?",                  "asia"},
-                {"What is the capital of China?",                   "beijing"},
-                {"What is 7 x 7?",                                  "49"},
-                {"What planet appears blue from space?",            "earth"},
-                {"What is the smallest country in the world?",      "vatican"},
-                {"What is the chemical symbol for gold?",           "au"},
-                {"What is 50 + 50?",                                "100"},
-                {"What is the capital of Russia?",                  "moscow"},
-                {"What is the fastest fish?",                       "sailfish"},
-                {"What is 2 + 2 x 2?",                             "6"},
-                {"What is the primary source of energy for Earth?", "sun"},
-                {"What is the capital of India?",                   "new delhi"},
-                {"What is the longest river in the world?",         "nile"},
-                {"What is 8 x 8?",                                  "64"},
-                -- 20 new questions
-                {"What is the capital of Japan?",                   "tokyo"},
-                {"What is the capital of Canada?",                  "ottawa"},
-                {"How many sides does a hexagon have?",             "6"},
-                {"What is the chemical symbol for water?",          "h2o"},
-                {"What is the largest planet in the solar system?", "jupiter"},
-                {"What is the capital of Brazil?",                  "brasilia"},
-                {"How many players are on a standard football team?","11"},
-                {"What is the chemical symbol for iron?",           "fe"},
-                {"What is the smallest planet in the solar system?","mercury"},
-                {"What is the capital of Egypt?",                   "cairo"},
-                {"How many strings does a standard guitar have?",   "6"},
-                {"What is the powerhouse of the cell?",             "mitochondria"},
-                {"What is the capital of South Korea?",             "seoul"},
-                {"What is the square root of 256?",                 "16"},
-                {"What is 13 x 13?",                                "169"},
-                {"What is the capital of Mexico?",                  "mexico city"},
-                {"How many hours are in one week?",                 "168"},
-                {"What is the chemical symbol for silver?",         "ag"},
-                {"What is the largest organ in the human body?",    "skin"},
-                {"What is the capital of Argentina?",               "buenos aires"},
-            }
-
-            local RECENCY = 10
-            local recentIdx = {}    -- ring buffer of recently used indices
-            local pool      = {}    -- shuffled remaining indices
-
-            -- Normalise: lowercase + strip all whitespace so "carbon dioxide"
-            -- and "carbondioxide" both become "carbondioxide"
-            local function norm(s)
-                return tostring(s):lower():gsub("%s+", "")
-            end
-
-            local function rebuildPool()
-                local blocked = {}
-                for _, i in ipairs(recentIdx) do blocked[i] = true end
-                pool = {}
-                for i = 1, #ALL_QUESTIONS do
-                    if not blocked[i] then table.insert(pool, i) end
-                end
-                -- Fisher-Yates shuffle
-                for i = #pool, 2, -1 do
-                    local j = math.random(1, i)
-                    pool[i], pool[j] = pool[j], pool[i]
-                end
-            end
-
-            local function pickNext()
-                if #pool == 0 then rebuildPool() end
-                local i = table.remove(pool, 1)
-                table.insert(recentIdx, i)
-                if #recentIdx > RECENCY then table.remove(recentIdx, 1) end
-                return ALL_QUESTIONS[i]
-            end
-
-            local scores = {}
-
-            local function displayName(p)
-                return p and (p.DisplayName ~= "" and p.DisplayName or p.Name) or "?"
-            end
-
-            local function showLeaderboard()
-                local list = {}
-                for p, s in pairs(scores) do
-                    if p and p.Parent then
-                        table.insert(list, {n = displayName(p), s = s})
-                    end
-                end
-                table.sort(list, function(a,b) return a.s > b.s end)
-                local out = "🏆 Scores: "
-                for i = 1, math.min(5, #list) do
-                    out = out .. i .. ". " .. list[i].n .. "=" .. list[i].s .. "  "
-                end
-                sendChat(out)
-            end
-
-            local function askQuestion()
-                if not active then return end
-                local q       = pickNext()
-                currentAnswer = norm(q[2])
-                sendChat("🧠 " .. q[1])
-            end
-
-            local function connectPlayer(p)
-                -- Connect this player's chat; fires whenever they type anything
-                local c = p.Chatted:Connect(function(msg)
-                    if not active or not currentAnswer then return end
-                    if norm(msg) == currentAnswer then
-                        scores[p] = (scores[p] or 0) + 1
-                        sendChat("✅ " .. displayName(p)
-                                 .. " got it! (answer: " .. currentAnswer
-                                 .. ")  total: " .. scores[p])
-                        showLeaderboard()
-                        task.wait(0.8)
-                        askQuestion()
-                    end
-                end)
-                table.insert(chatConns, c)
-            end
-
-            local function startTrivia()
-                active    = true
-                scores    = {}
-                recentIdx = {}
-                pool      = {}
-
-                for _, p in ipairs(Players:GetPlayers()) do
-                    connectPlayer(p)
-                end
-                playerAddedConn = Players.PlayerAdded:Connect(function(p)
-                    if active then connectPlayer(p) end
-                end)
-
-                sendChat("🎮 Trivia started! Answer in chat. Type "..PREFIX.."trivia to stop.")
-                task.wait(1)
-                askQuestion()
-            end
-
-            local function stopTrivia()
-                active        = false
-                currentAnswer = nil
-
-                for _, c in ipairs(chatConns) do pcall(function() c:Disconnect() end) end
-                chatConns = {}
-
-                if playerAddedConn then
-                    playerAddedConn:Disconnect()
-                    playerAddedConn = nil
-                end
-
-                showLeaderboard()
-                sendChat("🛑 Trivia ended!")
-            end
-
-            return function(_)
-                if active then stopTrivia() else startTrivia() end
-            end
-        end)(),
+        name = {"stare", "look", "watch"},
+        help = "Look at player",
+        args = "<name>",
+        run = function() end,
     },
-    -- ── ORBIT ─────────────────────────────────────────────────────────────────
-		{
-				name = "orbit",
-				help = "Orbit around a player",
-				args = "<name>",
-				run = (function()
-						local active = false
-						local conn = nil
-						local target = nil
-						local angle = 0
 
-						return function(args)
-								active = not active
-
-								if active then
-										local name = (args or ""):match("^%s*(.-)%s*$")
-										local query = name:lower()
-
-										target = nil
-
-										-- pass 1: DisplayName
-										for _, p in ipairs(Players:GetPlayers()) do
-												if p.DisplayName:lower():find(query, 1, true) then
-														target = p
-														break
-												end
-										end
-
-										-- pass 2: Username fallback
-										if not target then
-												for _, p in ipairs(Players:GetPlayers()) do
-														if p.Name:lower():find(query, 1, true) then
-																target = p
-																break
-														end
-												end
-										end
-
-										if not target then
-												active = false
-												notify("Orbit", "Player not found.")
-												return
-										end
-
-										conn = RunService.RenderStepped:Connect(function(dt)
-												local hrp = getHRP()
-												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-
-												if hrp and thrp then
-														angle = angle + dt * 2
-
-														local offset = Vector3.new(
-																math.cos(angle) * 6,
-																2,
-																math.sin(angle) * 6
-														)
-
-														hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
-												end
-										end)
-
-										notify("Orbit", "ON")
-
-								else
-										if conn then
-												conn:Disconnect()
-												conn = nil
-										end
-
-										target = nil
-										angle = 0
-										notify("Orbit", "OFF")
-								end
-						end
-				end)(),
-		},
-    -- ── STARE ─────────────────────────────────────────────────────────────────
-		{
-				name = "stare",
-				help = "Continuously look at a player",
-				args = "<name>",
-				run = (function()
-						local active = false
-						local conn = nil
-						local target = nil
-
-						return function(args)
-								active = not active
-
-								if active then
-										local name = (args or ""):match("^%s*(.-)%s*$")
-										local query = name:lower()
-
-										target = nil
-
-										-- pass 1: DisplayName
-										for _, p in ipairs(Players:GetPlayers()) do
-												if p.DisplayName:lower():find(query, 1, true) then
-														target = p
-														break
-												end
-										end
-
-										-- pass 2: Username fallback
-										if not target then
-												for _, p in ipairs(Players:GetPlayers()) do
-														if p.Name:lower():find(query, 1, true) then
-																target = p
-																break
-														end
-												end
-										end
-
-										if not target then
-												active = false
-												notify("Stare", "Player not found.")
-												return
-										end
-
-										conn = RunService.RenderStepped:Connect(function()
-												local hrp = getHRP()
-												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-
-												if hrp and thrp then
-														hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
-												end
-										end)
-
-										notify("Stare", "ON")
-
-								else
-										if conn then
-												conn:Disconnect()
-												conn = nil
-										end
-
-										target = nil
-										notify("Stare", "OFF")
-								end
-						end
-				end)(),
-		},
-
-    -- ── SPAM ──────────────────────────────────────────────────────────────────
     {
-        name = "spam",
-        help = "Spam a message into chat",
+        name = {"spam", "loopchat", "repeat"},
+        help = "Spam chat",
         args = "<message>",
-        run = (function(args)
-            local active = false
-    
-            return function(args)
-                active = not active
-    
-                if active then
-                    local msg = tostring(args)
-    
-                    if msg == "" then
-                        active = false
-                        notify("Spam", "Invalid message")
-                        return
-                    end
-    
-                    task.spawn(function()
-                        while active do
-                            game:GetService("ReplicatedStorage")
-                                .DefaultChatSystemChatEvents
-                                .SayMessageRequest:FireServer(msg, "All")
-    
-                            task.wait(2)
-                        end
-                    end)
-    
-                    notify("Spam", "ON")
-                else
-                    notify("Spam", "OFF")
-                end
-            end
-        end)(),
+        run = function() end,
     },
 
-    -- ── JUMPSPIN ──────────────────────────────────────────────────────────────
     {
-        name = "jumpspin",
-        help = "Spin rapidly while jumping",
+        name = {"jumpspin", "jspin", "spinjump"},
+        help = "Spin jump",
         args = "",
-        run  = function(_args)
+        run = function(_)
             local hrp = getHRP()
             local hum = getHum()
 
             if hrp and hum then
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
-
                 for i = 1, 50 do
                     hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(40), 0)
                     task.wait()
                 end
-
-                notify("JumpSpin", "Completed spin jump.")
             end
         end,
     },
 
-    -- ── FLING ─────────────────────────────────────────────────────────────────
     {
-        name = "fling",
-        help = "Spin extremely fast",
+        name = {"fling", "yeet", "spinfast"},
+        help = "Spin fast",
         args = "",
         run = (function()
-            local active = false
-            local conn = nil
-    
+            local on = false
+            local conn
+
             return function()
-                active = not active
-    
+                on = not on
+
                 local hrp = getHRP()
                 if not hrp then return end
-    
-                if active then
+
+                if on then
                     conn = RunService.RenderStepped:Connect(function()
                         hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(150), 0)
                     end)
-    
-                    notify("Fling", "ON")
                 else
-                    if conn then conn:Disconnect(); conn = nil end
-                    notify("Fling", "OFF")
+                    if conn then conn:Disconnect() end
                 end
             end
         end)(),
     },
 
-    -- ── RANDOMTP ──────────────────────────────────────────────────────────────
     {
-        name = "randomtp",
-        help = "Teleport to a random spot nearby",
+        name = {"randomtp", "rtp", "randtp"},
+        help = "Random teleport",
         args = "",
-        run  = function(_args)
+        run = function(_)
             local hrp = getHRP()
-
             if hrp then
-                local offset = Vector3.new(
-                    math.random(-200,200),
-                    math.random(0,0),
-                    math.random(-200,200)
-                )
-
-                hrp.CFrame = hrp.CFrame + offset
-
-                notify("RandomTP", "Teleported randomly.")
+                hrp.CFrame = hrp.CFrame + Vector3.new(math.random(-200,200),0,math.random(-200,200))
             end
         end,
     },
+
 }   -- ← end of COMMANDS table
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1371,13 +876,22 @@ local function onChat(msg)
     if cmdName == "open"  then openMenu();  return end
     if cmdName == "close" then closeMenu(); return end
 
-    for _, cmd in ipairs(COMMANDS) do
-        if cmd.name:lower() == cmdName then
-            runCommand(cmd, args)
-            return
-        end
-    end
-
+		for _, cmd in ipairs(COMMANDS) do
+				if type(cmd.name) == "table" then
+						for _, alias in ipairs(cmd.name) do
+								if alias:lower() == cmdName then
+										runCommand(cmd, args)
+										return
+								end
+						end
+				else
+						if cmd.name:lower() == cmdName then
+								runCommand(cmd, args)
+								return
+						end
+				end
+		end
+		
     notify("Unknown Command", PREFIX .. cmdName)
 end
 
