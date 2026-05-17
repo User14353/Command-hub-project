@@ -976,7 +976,7 @@ local COMMANDS = {
 									local lp=plrs.LocalPlayer
 											if not name or name == "" then return end
 											name = name:lower():gsub("([%.%+%-%*%?%[%]%^%$%(%)%%])", "%%%1") -- escape pattern chars
-											for _, a in plrs:GetPlayers() do
+											for _, a in ipairs(plrs:GetPlayers()) do
 													if a ~= lp then
 															local char = a.Character
 															if char then
