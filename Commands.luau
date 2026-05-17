@@ -1214,7 +1214,7 @@ local COMMANDS = {
 							end
 
 							-- ✅ USE COMMAND ARGUMENT
-							FlingUser(args)
+							FlingUser(targetPlayer.Name)
 
 							task.wait(0.05) -- Give your kill code a brief moment to impact the target
 
