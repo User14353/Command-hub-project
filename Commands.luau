@@ -993,7 +993,10 @@ local COMMANDS = {
 													end
 											end
 									end
-												
+
+									local target = GetPlr(name)
+									if not target then return end
+									if not target.Character then return end		
 									function FlingUser(name)
 										if name == nil or name == "" then
 												return
@@ -1004,7 +1007,10 @@ local COMMANDS = {
 										-- print(target)
 
 										local targetchar = target.Character
-										local targethead = target.Character:WaitForChild("HumanoidRootPart")
+										if not targetchar then return end
+
+										local targethead = targetchar:FindFirstChild("HumanoidRootPart")
+										if not targethead then return end
 
 										local lp = plrs.LocalPlayer
 										local char = lp.Character
