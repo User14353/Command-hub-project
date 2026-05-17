@@ -2,22 +2,19 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    COMMAND MENU  —  Client-Side                              ║
 ║                                                                              ║
-║  Chat prefix  _<command>   to run a command                                  ║
-║  _open  /  _close          to show / hide the menu GUI                       ║
+║  Chat prefix  _<command>  or any alias to run a command                      ║
+║  _open / _close           to show / hide the menu                            ║
 ║                                                                              ║
-║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────   ║
+║  ── ADDING YOUR OWN COMMANDS ──────────────────────────────────────────────  ║
 ║                                                                              ║
-║  1. Find the COMMANDS table below.                                           ║
-║  2. Add a new entry:                                                         ║
-║       {                                                                      ║
-║           name = "commandname",    -- what you type after _                  ║
-║           help = "description",    -- shown in the menu                      ║
-║           args = "[optional arg]", -- argument hint (or "" for none)         ║
-║           run  = function(args)    -- args = string after command name       ║
-║               -- your code here                                              ║
-║           end,                                                               ║
-║       },                                                                     ║
-║  3. Done. No GUI edits needed. It auto-populates.                            ║
+║  {                                                                           ║
+║      name = "cmd",              -- string, OR a table of aliases:            ║
+║      name = {"cmd","c","alias"},-- first entry is the display name           ║
+║      help = "description",                                                   ║
+║      args = "<arg>",            -- hint shown in GUI  ("" for none)          ║
+║      run  = function(args) end, -- args = everything typed after the cmd     ║
+║  },                                                                          ║
+║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 --]]
 
@@ -56,10 +53,6 @@ local function notify(title, body, dur)
     })
 end
 
---[[
-    sendChat — works in both modern TextChatService and legacy DefaultChatSystem.
-    Tries modern first, falls back automatically.
---]]
 local function sendChat(msg)
     pcall(function()
         if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
@@ -81,6 +74,45 @@ end
 local function getHum()
     local c = lp.Character
     return c and c:FindFirstChildOfClass("Humanoid")
+end
+
+-- ════════════════════════════════════════════════════════════════════════════
+--  NAME HELPERS
+--  cmd.name can be a string OR a table of aliases.
+--  These two functions make everything else not have to care which it is.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- Returns the primary display name (always a string)
+local function primaryName(cmd)
+    if type(cmd.name) == "table" then
+        return cmd.name[1] or "?"
+    end
+    return tostring(cmd.name)
+end
+
+-- Returns true if `text` matches any alias (case-insensitive)
+local function nameMatches(cmd, text)
+    local t = text:lower()
+    if type(cmd.name) == "table" then
+        for _, alias in ipairs(cmd.name) do
+            if tostring(alias):lower() == t then return true end
+        end
+        return false
+    end
+    return tostring(cmd.name):lower() == t
+end
+
+-- Returns true if `text` is contained in any alias or the help string
+local function nameContains(cmd, text)
+    local t = text:lower()
+    if cmd.help:lower():find(t, 1, true) then return true end
+    if type(cmd.name) == "table" then
+        for _, alias in ipairs(cmd.name) do
+            if tostring(alias):lower():find(t, 1, true) then return true end
+        end
+        return false
+    end
+    return tostring(cmd.name):lower():find(t, 1, true) ~= nil
 end
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -962,7 +994,7 @@ end
 local function mkL(parent, text, col, font, tsz, sz, pos, xa, ya, name, zi, wrap)
     local l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
-    l.Text = tostring(text or "")
+    l.Text           = tostring(text or "")
     l.TextColor3     = col  or TH.TextPri
     l.Font           = font or Enum.Font.GothamMedium
     l.TextSize       = tsz  or 13
@@ -1027,11 +1059,11 @@ local function makeDraggable(frame, handle)
     local drag, sp, sf = false
     handle.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then
-            drag = true; sp = i.Position; sf = frame.Position
+            drag=true; sp=i.Position; sf=frame.Position
         end
     end)
     handle.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then drag=false end
     end)
     UserInputService.InputChanged:Connect(function(i)
         if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
@@ -1096,7 +1128,7 @@ local SEARCH_Y  = HDR_H + 10
 local searchBox = mkInput(win, "  search commands…",
                           UDim2.new(1,-16,0,30), UDim2.new(0,8,0,SEARCH_Y), "Search", 6, 3)
 
--- List
+-- Scrolling list
 local LIST_Y = SEARCH_Y + 40
 local scroll = Instance.new("ScrollingFrame")
 scroll.BackgroundTransparency = 1
@@ -1122,27 +1154,45 @@ local runBtn = mkB(win, "Run ▶", TH.Accent, Color3.new(1,1,1),
                    Enum.Font.GothamBold, 13,
                    UDim2.new(0,100,0,30), UDim2.new(1,-108,1,-52), "RunBtn", 6, 3)
 
--- Build rows
+-- ── Row builder ───────────────────────────────────────────────────────────────
+
 local selectedCmd = nil
 
+--[[
+    runCommand — wraps cmd.run in a pcall.
+    Uses primaryName() for the error title so it always gets a string,
+    even when cmd.name is a table.
+--]]
 local function runCommand(cmd, argStr)
     argStr = argStr or ""
     local ok, err = pcall(cmd.run, argStr)
-    if not ok then notify("Error: "..cmd.name, tostring(err):sub(1,80), 5) end
+    if not ok then
+        notify("Error: "..primaryName(cmd), tostring(err):sub(1,80), 5)
+    end
 end
 
+--[[
+    buildList — rebuilds the scrolling command list.
+    Filter checks primaryName AND all aliases AND help text,
+    so typing any alias into the search box finds the command.
+--]]
 local function buildList(filter)
     for _, ch in ipairs(scroll:GetChildren()) do
         if ch:IsA("Frame") then ch:Destroy() end
     end
+
     for i, cmd in ipairs(COMMANDS) do
+        -- Filter: skip if filter is set and nothing matches
         if filter and filter ~= "" then
-            local f = filter:lower()
-            if not cmd.name:lower():find(f,1,true) and
-               not cmd.help:lower():find(f,1,true) then continue end
+            if not nameContains(cmd, filter) then continue end
         end
 
-        local row = mkF(scroll, TH.Row, UDim2.new(1,0,0,52), UDim2.new(0,0,0,0), "Row_" .. (type(cmd.name) == "table" and cmd.name[1] or cmd.name), 6, 2)
+        local pname = primaryName(cmd)
+
+        -- Row frame — uses primaryName so the Instance name is always valid
+        local row = mkF(scroll, TH.Row,
+                        UDim2.new(1,0,0,52), UDim2.new(0,0,0,0),
+                        "Row_"..pname, 6, 2)
         row.LayoutOrder = i
 
         row.MouseEnter:Connect(function()
@@ -1164,27 +1214,34 @@ local function buildList(filter)
                 if r:IsA("Frame") then r.BackgroundColor3 = TH.Row end
             end
             row.BackgroundColor3 = TH.RowHover
-            -- double-click = run
             local now = tick()
             if now - lastClick < 0.35 then runCommand(cmd, argBox.Text) end
             lastClick = now
         end)
 
-        local badge = mkF(row, TH.AccentLo, UDim2.new(0,20,0,20), UDim2.new(0,8,0.5,-10), "Badge", 4, 3)
+        -- Prefix badge
+        local badge = mkF(row, TH.AccentLo,
+                          UDim2.new(0,20,0,20), UDim2.new(0,8,0.5,-10), "Badge", 4, 3)
         mkL(badge, PREFIX, TH.Accent, Enum.Font.Code, 10,
-            UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Enum.TextXAlignment.Center, nil, "PL", 4)
+            UDim2.new(1,0,1,0), UDim2.new(0,0,0,0),
+            Enum.TextXAlignment.Center, nil, "PL", 4)
 
-        mkL(row, (type(cmd.name) == "table" and cmd.name[1] or cmd.name), TH.TextPri, Enum.Font.GothamBold, 13,
+        -- Primary name label
+        mkL(row, pname, TH.TextPri, Enum.Font.GothamBold, 13,
             UDim2.new(1,-90,0,22), UDim2.new(0,34,0,4), nil, nil, "Name", 3)
+
+        -- Help text
         mkL(row, cmd.help, TH.TextSec, Enum.Font.Gotham, 11,
             UDim2.new(1,-90,0,18), UDim2.new(0,34,0,28), nil, nil, "Help", 3)
 
+        -- Args hint
         if cmd.args ~= "" then
             mkL(row, cmd.args, TH.TextDis, Enum.Font.Code, 10,
                 UDim2.new(0,80,1,0), UDim2.new(1,-84,0,0),
                 Enum.TextXAlignment.Right, nil, "Args", 3)
         end
 
+        -- Per-row run button
         local rowRun = mkB(row, "▶", TH.AccentLo, TH.Accent,
                            Enum.Font.GothamBold, 11,
                            UDim2.new(0,24,0,24), UDim2.new(1,-30,0.5,-12), "RowRun", 5, 3)
@@ -1197,11 +1254,15 @@ end
 
 buildList()
 
-searchBox:GetPropertyChangedSignal("Text"):Connect(function() buildList(searchBox.Text) end)
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    buildList(searchBox.Text)
+end)
+
 runBtn.MouseButton1Click:Connect(function()
     if selectedCmd then runCommand(selectedCmd, argBox.Text)
     else notify("Command Menu", "Select a command first.") end
 end)
+
 closeBtn.MouseButton1Click:Connect(function() win.Visible = false end)
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1232,26 +1293,19 @@ local function onChat(msg)
     local cmdName = matched:lower()
     local args    = body:sub(#matched + 1):match("^%s*(.-)%s*$") or ""
 
+    -- Open/close handled before table lookup
     if cmdName == "open"  then openMenu();  return end
     if cmdName == "close" then closeMenu(); return end
 
-		for _, cmd in ipairs(COMMANDS) do
-				if type(cmd.name) == "table" then
-						for _, alias in ipairs(cmd.name) do
-								if alias:lower() == cmdName then
-										runCommand(cmd, args)
-										return
-								end
-						end
-				else
-						if cmd.name:lower() == cmdName then
-								runCommand(cmd, args)
-								return
-						end
-				end
-		end
-		
-    notify("Unknown Command", PREFIX .. cmdName)
+    -- nameMatches() handles both string and table cmd.name correctly
+    for _, cmd in ipairs(COMMANDS) do
+        if nameMatches(cmd, cmdName) then
+            runCommand(cmd, args)
+            return
+        end
+    end
+
+    notify("Unknown Command", PREFIX..cmdName)
 end
 
 lp.Chatted:Connect(onChat)
