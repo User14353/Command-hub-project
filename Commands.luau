@@ -3,18 +3,18 @@
 ║                    COMMAND MENU  —  Client-Side                              ║
 ║                                                                              ║
 ║  Chat prefix  _<command>   to run a command                                  ║
-║  _open  /  _close          to show / hide the menu GUI                      ║
+║  _open  /  _close          to show / hide the menu GUI                       ║
 ║                                                                              ║
-║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────  ║
+║  ── ADDING YOUR OWN COMMANDS ─────────────────────────────────────────────   ║
 ║                                                                              ║
 ║  1. Find the COMMANDS table below.                                           ║
 ║  2. Add a new entry:                                                         ║
 ║       {                                                                      ║
-║           name = "commandname",    -- what you type after _                 ║
-║           help = "description",    -- shown in the menu                     ║
-║           args = "[optional arg]", -- argument hint (or "" for none)        ║
-║           run  = function(args)    -- args = string after command name      ║
-║               -- your code here                                             ║
+║           name = "commandname",    -- what you type after _                  ║
+║           help = "description",    -- shown in the menu                      ║
+║           args = "[optional arg]", -- argument hint (or "" for none)         ║
+║           run  = function(args)    -- args = string after command name       ║
+║               -- your code here                                              ║
 ║           end,                                                               ║
 ║       },                                                                     ║
 ║  3. Done. No GUI edits needed. It auto-populates.                            ║
@@ -183,40 +183,6 @@ local COMMANDS = {
         run = function(_)
             notify("Rejoin", "Rejoining…")
             TeleportService:Teleport(game.PlaceId, lp)
-        end,
-    },
-
-    {
-        name = {"hatrean", "hat", "reanim"},
-        help = "FE hat reanimation — re-weld accessories locally",
-        args = "",
-        run = function(_)
-            local c = lp.Character
-            if not c then notify("Hat Rean", "No character."); return end
-            local hrp = c:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            for _, acc in ipairs(c:GetChildren()) do
-                if acc:IsA("Accessory") then
-                    local handle = acc:FindFirstChild("Handle")
-                    if handle then
-                        local clone = handle:Clone()
-                        clone.CanCollide = false
-                        clone.Massless = true
-                        clone.Parent = workspace
-
-                        local weld = Instance.new("Motor6D")
-                        weld.Part0 = hrp
-                        weld.Part1 = clone
-                        weld.C0 = hrp.CFrame:ToObjectSpace(handle.CFrame)
-                        weld.Parent = hrp
-
-                        handle.LocalTransparencyModifier = 1
-                    end
-                end
-            end
-
-            notify("Hat Rean", "Done.")
         end,
     },
 
@@ -472,27 +438,420 @@ local COMMANDS = {
             end
         end)(),
     },
+		{ 
+			name = "dance", 
+			help = "Toggle a dance emote (cycles through 3)", 
+			args = "", 
+			run = (function() 
+				local track = nil 
+				local dances = { "rbxassetid://507771019", "rbxassetid://507776043", "rbxassetid://507777268", } 
+				local idx = 0 return function(_) local hum = getHum() if not hum then notify("Dance", "No humanoid."); 
+					return end 
+				if track and track.IsPlaying then 
+					track:Stop() track = nil notify("Dance", "Stopped.") 
+					return end 
+				idx = (idx % #dances) + 1 
+				
+				local anim = Instance.new("Animation") 
+				anim.AnimationId = dances[idx] 
+				local ok, 
+				loaded = pcall(function() 
+					return hum:LoadAnimation(anim) end) 
+					if not ok or not loaded then 
+						notify("Dance", "Load failed: "..tostring(loaded)) 
+						return end 
+					track = loaded 
+					track.Priority = Enum.AnimationPriority.Action 
+					track:Play() 
+					notify("Dance", "Dancing ("..idx.."/"..#dances..") — run again to stop/switch.") 
+				end 
+			end)(), 
+		},
+
+		{
+			name = "trivia",
+			help = "Start/stop trivia game with chat answers",
+			args = "",
+			run = (function()
+					local active = false
+					local currentAnswer = nil -- normalised form
+					local chatConns = {} -- one RBXScriptConnection per player
+					local playerAddedConn = nil
+
+					local ALL_QUESTIONS = {
+							{"What planet is known as the Red Planet?", "mars"},
+							{"How many hearts does an octopus have?", "3"},
+							{"What is 5 + 7?", "12"},
+							{"What is the capital of Australia?", "canberra"},
+							{"What gas do plants absorb from the air?", "carbon dioxide"},
+							{"What is the largest ocean?", "pacific"},
+							{"What is H2O commonly known as?", "water"},
+							{"How many legs does a spider have?", "8"},
+							{"What year did Roblox release?", "2006"},
+							{"What is the square root of 81?", "9"},
+							{"What is the fastest land animal?", "cheetah"},
+							{"What is the tallest mountain?", "everest"},
+							{"What is the currency of Japan?", "yen"},
+							{"How many continents are there?", "7"},
+							{"What is the boiling point of water in Celsius?", "100"},
+							{"What planet is closest to the sun?", "mercury"},
+							{"What colour do you get mixing red and blue?", "purple"},
+							{"What is the capital of France?", "paris"},
+							{"How many days are in a leap year?", "366"},
+							{"What is the hardest natural substance?", "diamond"},
+							{"What is the biggest mammal?", "blue whale"},
+							{"What language has the most native speakers?", "mandarin"},
+							{"What is 9 x 9?", "81"},
+							{"What is the capital of Italy?", "rome"},
+							{"What organ pumps blood?", "heart"},
+							{"What is the freezing point of water in Celsius?", "0"},
+							{"What planet is famous for its rings?", "saturn"},
+							{"What is the main gas in Earth's atmosphere?", "nitrogen"},
+							{"How many bones does an adult human have?", "206"},
+							{"What is the capital of Germany?", "berlin"},
+							{"What fruit features in the saying a day keeps the doctor away?", "apple"},
+							{"What is 3 squared?", "9"},
+							{"What is the largest hot desert?", "sahara"},
+							{"What is the smallest prime number?", "2"},
+							{"What is the capital of Spain?", "madrid"},
+							{"What is 100 divided by 4?", "25"},
+							{"What is the official language of Brazil?", "portuguese"},
+							{"What ocean lies between Africa and Australia?", "indian"},
+							{"What is 15 + 15?", "30"},
+							{"What is the capital of the USA?", "washington"},
+							{"What animal is known as king of the jungle?", "lion"},
+							{"What is the square root of 144?", "12"},
+							{"What is the largest continent?", "asia"},
+							{"What is the capital of China?", "beijing"},
+							{"What is 7 x 7?", "49"},
+							{"What planet appears blue from space?", "earth"},
+							{"What is the smallest country in the world?", "vatican"},
+							{"What is the chemical symbol for gold?", "au"},
+							{"What is 50 + 50?", "100"},
+							{"What is the capital of Russia?", "moscow"},
+							{"What is the fastest fish?", "sailfish"},
+							{"What is 2 + 2 x 2?", "6"},
+							{"What is the primary source of energy for Earth?", "sun"},
+							{"What is the capital of India?", "new delhi"},
+							{"What is the longest river in the world?", "nile"},
+							{"What is 8 x 8?", "64"},
+
+							-- 20 new questions
+							{"What is the capital of Japan?", "tokyo"},
+							{"What is the capital of Canada?", "ottawa"},
+							{"How many sides does a hexagon have?", "6"},
+							{"What is the chemical symbol for water?", "h2o"},
+							{"What is the largest planet in the solar system?", "jupiter"},
+							{"What is the capital of Brazil?", "brasilia"},
+							{"How many players are on a standard football team?", "11"},
+							{"What is the chemical symbol for iron?", "fe"},
+							{"What is the smallest planet in the solar system?", "mercury"},
+							{"What is the capital of Egypt?", "cairo"},
+							{"How many strings does a standard guitar have?", "6"},
+							{"What is the powerhouse of the cell?", "mitochondria"},
+							{"What is the capital of South Korea?", "seoul"},
+							{"What is the square root of 256?", "16"},
+							{"What is 13 x 13?", "169"},
+							{"What is the capital of Mexico?", "mexico city"},
+							{"How many hours are in one week?", "168"},
+							{"What is the chemical symbol for silver?", "ag"},
+							{"What is the largest organ in the human body?", "skin"},
+							{"What is the capital of Argentina?", "buenos aires"},
+					}
+
+					local RECENCY = 10
+					local recentIdx = {}
+					local pool = {}
+
+					local function norm(s)
+							return tostring(s):lower():gsub("%s+", "")
+					end
+
+					local function rebuildPool()
+							local blocked = {}
+
+							for _, i in ipairs(recentIdx) do
+									blocked[i] = true
+							end
+
+							pool = {}
+
+							for i = 1, #ALL_QUESTIONS do
+									if not blocked[i] then
+											table.insert(pool, i)
+									end
+							end
+
+							-- Fisher-Yates shuffle
+							for i = #pool, 2, -1 do
+									local j = math.random(1, i)
+									pool[i], pool[j] = pool[j], pool[i]
+							end
+					end
+
+					local function pickNext()
+							if #pool == 0 then
+									rebuildPool()
+							end
+
+							local i = table.remove(pool, 1)
+							table.insert(recentIdx, i)
+
+							if #recentIdx > RECENCY then
+									table.remove(recentIdx, 1)
+							end
+
+							return ALL_QUESTIONS[i]
+					end
+
+					local scores = {}
+
+					local function displayName(p)
+							return p and (p.DisplayName ~= "" and p.DisplayName or p.Name) or "?"
+					end
+
+					local function showLeaderboard()
+							local list = {}
+
+							for p, s in pairs(scores) do
+									if p and p.Parent then
+											table.insert(list, { n = displayName(p), s = s })
+									end
+							end
+
+							table.sort(list, function(a, b)
+									return a.s > b.s
+							end)
+
+							local out = "🏆 Scores: "
+
+							for i = 1, math.min(5, #list) do
+									out = out .. i .. ". " .. list[i].n .. "=" .. list[i].s .. " "
+							end
+
+							sendChat(out)
+					end
+
+					local function askQuestion()
+							if not active then return end
+
+							local q = pickNext()
+							currentAnswer = norm(q[2])
+
+							sendChat("🧠 " .. q[1])
+					end
+
+					local function connectPlayer(p)
+							local c = p.Chatted:Connect(function(msg)
+									if not active or not currentAnswer then return end
+
+									if norm(msg) == currentAnswer then
+											scores[p] = (scores[p] or 0) + 1
+											sendChat("✅ " .. displayName(p) ..
+													" got it! (answer: " .. currentAnswer .. ") total: " .. scores[p])
+
+											showLeaderboard()
+											task.wait(0.8)
+											askQuestion()
+									end
+							end)
+
+							table.insert(chatConns, c)
+					end
+
+					local function startTrivia()
+							active = true
+							scores = {}
+							recentIdx = {}
+							pool = {}
+
+							for _, p in ipairs(Players:GetPlayers()) do
+									connectPlayer(p)
+							end
+
+							playerAddedConn = Players.PlayerAdded:Connect(function(p)
+									if active then
+											connectPlayer(p)
+									end
+							end)
+
+							sendChat("🎮 Trivia started! Answer in chat. Type "..PREFIX.."trivia to stop.")
+							task.wait(1)
+							askQuestion()
+					end
+
+					local function stopTrivia()
+							active = false
+							currentAnswer = nil
+
+							for _, c in ipairs(chatConns) do
+									pcall(function()
+											c:Disconnect()
+									end)
+							end
+
+							chatConns = {}
+
+							if playerAddedConn then
+									playerAddedConn:Disconnect()
+									playerAddedConn = nil
+							end
+
+							showLeaderboard()
+							sendChat("🛑 Trivia ended!")
+					end
+
+					return function(_)
+							if active then
+									stopTrivia()
+							else
+									startTrivia()
+							end
+					end
+			end)(),
+		},
 
     {
         name = {"orbit", "circle", "spin"},
         help = "Orbit player",
         args = "<name>",
-        run = function() end,
-    },
+				run = (function()
+						local active = false
+						local conn = nil
+						local target = nil
+						local angle = 0
+
+						return function(args)
+								active = not active
+
+								if active then
+										local name = (args or ""):match("^%s*(.-)%s*$")
+										local query = name:lower()
+
+										target = nil
+
+										-- pass 1: DisplayName
+										for _, p in ipairs(Players:GetPlayers()) do
+												if p.DisplayName:lower():find(query, 1, true) then
+														target = p
+														break
+												end
+										end
+
+										-- pass 2: Username fallback
+										if not target then
+												for _, p in ipairs(Players:GetPlayers()) do
+														if p.Name:lower():find(query, 1, true) then
+																target = p
+																break
+														end
+												end
+										end
+
+										if not target then
+												active = false
+												notify("Orbit", "Player not found.")
+												return
+										end
+
+										conn = RunService.RenderStepped:Connect(function(dt)
+												local hrp = getHRP()
+												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+												if hrp and thrp then
+														angle = angle + dt * 2
+
+														local offset = Vector3.new(
+																math.cos(angle) * 6,
+																2,
+																math.sin(angle) * 6
+														)
+
+														hrp.CFrame = CFrame.new(thrp.Position + offset, thrp.Position)
+												end
+										end)
+
+										notify("Orbit", "ON")
+
+								else
+										if conn then
+												conn:Disconnect()
+												conn = nil
+										end
+
+										target = nil
+										angle = 0
+										notify("Orbit", "OFF")
+								end
+						end
+				end)(),
+		},
 
     {
         name = {"stare", "look", "watch"},
         help = "Look at player",
         args = "<name>",
-        run = function() end,
-    },
+				run = (function()
+						local active = false
+						local conn = nil
+						local target = nil
 
-    {
-        name = {"spam", "loopchat", "repeat"},
-        help = "Spam chat",
-        args = "<message>",
-        run = function() end,
-    },
+						return function(args)
+								active = not active
+
+								if active then
+										local name = (args or ""):match("^%s*(.-)%s*$")
+										local query = name:lower()
+
+										target = nil
+
+										-- pass 1: DisplayName
+										for _, p in ipairs(Players:GetPlayers()) do
+												if p.DisplayName:lower():find(query, 1, true) then
+														target = p
+														break
+												end
+										end
+
+										-- pass 2: Username fallback
+										if not target then
+												for _, p in ipairs(Players:GetPlayers()) do
+														if p.Name:lower():find(query, 1, true) then
+																target = p
+																break
+														end
+												end
+										end
+
+										if not target then
+												active = false
+												notify("Stare", "Player not found.")
+												return
+										end
+
+										conn = RunService.RenderStepped:Connect(function()
+												local hrp = getHRP()
+												local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+												if hrp and thrp then
+														hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+												end
+										end)
+
+										notify("Stare", "ON")
+
+								else
+										if conn then
+												conn:Disconnect()
+												conn = nil
+										end
+
+										target = nil
+										notify("Stare", "OFF")
+								end
+						end
+				end)(),
+		},
 
     {
         name = {"jumpspin", "jspin", "spinjump"},
