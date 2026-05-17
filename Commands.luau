@@ -928,6 +928,158 @@ local COMMANDS = {
         end)(),
     },
 
+		{
+			name = {"ToolKill", "TK", "Remove"},
+			help = "Kill other players",
+			args = "<name>",
+			run = (function()
+
+					local active = false
+					local conn = nil
+					local target = nil
+
+					return function(args)
+
+							active = not active
+
+							if active then
+									local name = (args or ""):match("^%s*(.-)%s*$")
+									local query = name:lower()
+
+									target = nil
+
+									-- pass 1: DisplayName
+									for _, p in ipairs(Players:GetPlayers()) do
+											if p.DisplayName:lower():find(query, 1, true) then
+													target = p
+													break
+											end
+									end
+
+									-- pass 2: Username fallback
+									if not target then
+											for _, p in ipairs(Players:GetPlayers()) do
+													if p.Name:lower():find(query, 1, true) then
+															target = p
+															break
+													end
+											end
+									end
+
+									if not target then
+											active = false
+											notify("Tool Kill", "Player not found.")
+											return
+									end
+									function GetPlr(name)
+									local plrs=game.Players
+									local lp=plrs.LocalPlayer
+											if not name or name == "" then return end
+											name = name:lower():gsub("([%.%+%-%*%?%[%]%^%$%(%)%%])", "%%%1") -- escape pattern chars
+											for _, a in plrs:GetPlayers() do
+													if a ~= lp then
+															local char = a.Character
+															if char then
+																	local hrp = char:FindFirstChild("HumanoidRootPart")
+																	local hum = char:FindFirstChild("Humanoid")
+																	if hrp and hum and hum.Health > 1 then
+																			local n = a.Name:lower()
+																			local d = a.DisplayName:lower()
+																			if n:find("^"..name) or d:find("^"..name) then
+																					return a
+																			end
+																	end
+															end
+													end
+											end
+									end
+												
+									function FlingUser(name)
+										if name == nil or name == "" then
+												return
+										end
+
+										local target = GetPlr(name)
+										local plrs = game.Players
+										-- print(target)
+
+										local targetchar = target.Character
+										local targethead = target.Character:WaitForChild("HumanoidRootPart")
+
+										local lp = plrs.LocalPlayer
+										local char = lp.Character
+										local hrp = char:FindFirstChild("HumanoidRootPart")
+
+										local Tool = nil
+										local backpack = lp.Backpack
+										local hum = char:FindFirstChild("Humanoid")
+
+										local random = math.random
+										local cf = CFrame.new
+										local v3 = Vector3.new
+
+										char.Archivable = true
+										local Clone = char:Clone()
+
+										oswait(.1)
+
+										lp.Character = Clone
+										lp.Character = char
+
+										-- hrp.CFrame = hrp.CFrame * cf(random(-1000000,1000000),0,random(-1000000,1000000))
+										-- hrp.CFrame = targetchar.HumanoidRootPart.CFrame
+
+										hrp.AssemblyLinearVelocity = v3(0, 0, 0)
+
+										char:FindFirstChildOfClass("Humanoid"):Destroy()
+
+										oswait(.1)
+
+										local Humanoid = Instance.new("Humanoid")
+										Humanoid.Parent = char
+
+										oswait(.2)
+
+										if char:FindFirstChildOfClass("Tool") then
+												Tool = char:FindFirstChildOfClass("Tool")
+										elseif backpack and backpack:FindFirstChildOfClass("Tool") then
+												Tool = backpack:FindFirstChildOfClass("Tool")
+										else
+												return
+										end
+
+										local Arm
+
+										if char:FindFirstChild("Right Arm") then
+												Arm = char["Right Arm"].CFrame * CFrame.new(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0)
+										else
+												Arm = char["RightHand"].CFrame * CFrame.new(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0)
+										end
+
+										Tool.Grip = Arm:ToObjectSpace(targethead.CFrame):Inverse()
+										Tool.Parent = char
+
+										repeat
+												oswait()
+										until not Tool or (Tool and (Tool.Parent == workspace or Tool.Parent == targetchar))
+
+										Tool.Grip = Arm:ToObjectSpace(targethead.CFrame * CFrame.new(0/0, 100000000, 0/0)):Inverse()
+
+										hrp.CFrame = hrp.CFrame * cf(random(-1000000,1000000),0,random(-1000000,1000000))
+
+										oswait(.01)
+
+										lp.Character = nil
+										Humanoid.Health = 0
+									end
+
+							FlingUser("YourTargetName")
+
+							end
+					end
+			end)()
+		},
+
     {
         name = {"randomtp", "rtp", "randtp"},
         help = "Random teleport",
