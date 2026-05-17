@@ -126,7 +126,7 @@ local COMMANDS = {
         help = "Reminder about the menu",
         args = "",
         run = function(_)
-            notify("Commands", "Type "..PREFIX.."open or press RightAlt.", 4)
+            notify("Commands", "Type "..PREFIX.."open or press Home on your Keypad.", 4)
         end,
     },
 
@@ -1071,6 +1071,200 @@ local COMMANDS = {
             end
         end,
     },
+		{
+			name = {"AutoRadiusKill", "ARK", "SelfDefence"},
+			help = "Teleports to players in radius, executes code, and returns home",
+			args = "<radius>",
+			run = function(args)
+					-- Parse radius from arguments, default to 20 studs if blank
+					local radius = tonumber(args:match("^%s*(.-)%s*$")) or 20
+					
+					-- Toggle logic: Running the command again turns it off
+					if _G.AutoRadiusLoop then
+							_G.AutoRadiusLoop = false
+							notify("AutoRadius", "Disabled")
+							return
+					else
+							_G.AutoRadiusLoop = true
+							notify("AutoRadius", "Enabled with radius: " .. radius)
+					end
+
+					-- Teleport and Cycle Function
+					local function ActionCycle(targetPlayer)
+							local lp = game.Players.LocalPlayer
+							local char = lp.Character
+							if not char then return end
+
+							local hrp = char:FindFirstChild("HumanoidRootPart")
+							local hum = char:FindFirstChildOfClass("Humanoid")
+							if not hrp or not hum then return end
+
+							local targetChar = targetPlayer.Character
+							if not targetChar then return end
+							local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
+							if not targetHrp then return end
+
+							-- 1. SAVE YOUR ORIGINAL POSITION
+							local originalCFrame = hrp.CFrame
+
+							-- 2. TELEPORT TO THE TARGET
+							hrp.CFrame = targetHrp.CFrame
+							task.wait(0.05) -- Tiny delay to ensure physics syncs up
+
+							function GetPlr(name)
+									local plrs = game.Players
+									local lp = plrs.LocalPlayer
+
+									if not name or name == "" then return end
+
+									name = name:lower():gsub("([%.%+%-%*%?%[%]%^%$%(%)%%])", "%%%1")
+
+									for _, a in plrs:GetPlayers() do
+											if a ~= lp then
+													local char = a.Character
+													if char then
+															local hrp = char:FindFirstChild("HumanoidRootPart")
+															local hum = char:FindFirstChild("Humanoid")
+															if hrp and hum and hum.Health > 1 then
+																	local n = a.Name:lower()
+																	local d = a.DisplayName:lower()
+																	if n:find("^" .. name) or d:find("^" .. name) then
+																			return a
+																	end
+															end
+													end
+											end
+									end
+							end
+
+							function FlingUser(name)
+									if not name or name == "" then return end
+
+									local target = GetPlr(name)
+									if not target then return end -- IMPORTANT FIX
+
+									local plrs = game.Players
+
+									local targetchar = target.Character
+									if not targetchar then return end
+
+									local targethead = targetchar:WaitForChild("HumanoidRootPart")
+
+									local lp = plrs.LocalPlayer
+									local char = lp.Character
+									if not char then return end
+
+									local hrp = char:FindFirstChild("HumanoidRootPart")
+									if not hrp then return end
+
+									local backpack = lp.Backpack
+
+									local random = math.random
+									local v3 = Vector3.new
+
+									char.Archivable = true
+
+									local Clone = char:Clone()
+									task.wait(0.1)
+
+									lp.Character = Clone
+									lp.Character = char
+
+									hrp.AssemblyLinearVelocity = v3(0,0,0)
+
+									local oldHum = char:FindFirstChildOfClass("Humanoid")
+									if oldHum then oldHum:Destroy() end
+
+									task.wait(0.1)
+
+									local Humanoid = Instance.new("Humanoid")
+									Humanoid.Parent = char
+
+									task.wait(0.2)
+
+									local Tool =
+											char:FindFirstChildOfClass("Tool")
+											or backpack:FindFirstChildOfClass("Tool")
+
+									if not Tool then return end
+
+									local Arm
+
+									if char:FindFirstChild("Right Arm") then
+											Arm = char["Right Arm"].CFrame * CFrame.new(0, -1, 0)
+									else
+											Arm = char["RightHand"].CFrame * CFrame.new(0, -1, 0)
+									end
+
+									Tool.Grip = Arm:ToObjectSpace(targethead.CFrame):Inverse()
+									Tool.Parent = char
+
+									repeat
+											task.wait()
+									until not Tool or Tool.Parent == workspace or Tool.Parent == targetchar
+
+									Tool.Grip = Arm:ToObjectSpace(CFrame.new(0, 1e8, 0)):Inverse()
+
+									hrp.CFrame = hrp.CFrame * CFrame.new(random(-100,100),0,random(-100,100))
+
+									task.wait(0.01)
+
+									lp.Character = nil
+									Humanoid.Health = 0
+							end
+
+							-- ✅ USE COMMAND ARGUMENT
+							FlingUser(args)
+
+							task.wait(0.05) -- Give your kill code a brief moment to impact the target
+
+							-- 3. FAST LOCAL RESPAWN
+							lp.Character = nil
+							hum.Health = 0
+							
+							-- 4. WAIT FOR RESPAWN AND TELEPORT BACK HOME
+							local newChar = lp.CharacterAdded:Wait()
+							local newHrp = newChar:WaitForChild("HumanoidRootPart", 5)
+							
+							if newHrp and originalCFrame then
+									task.wait(0.05) -- Brief delay so the engine registers the new character position
+									newHrp.CFrame = originalCFrame
+									notify("AutoRadius", "Returned back to original position")
+							end
+					end
+
+					-- Active Automation Loop
+					task.spawn(function()
+							while _G.AutoRadiusLoop do
+									task.wait(0.3) -- Scanning speed (adjust higher if you experience lag)
+									local lp = game.Players.LocalPlayer
+									local char = lp.Character
+									local hrp = char and char:FindFirstChild("HumanoidRootPart")
+									local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+									-- Only search for targets if you are currently alive and ready
+									if hrp and hum and hum.Health > 0 then
+											for _, player in ipairs(game.Players:GetPlayers()) do
+													if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+															local tHrp = player.Character.HumanoidRootPart
+															local tHum = player.Character:FindFirstChildOfClass("Humanoid")
+															
+															if tHum and tHum.Health > 0 then
+																	-- Check distance between you and the enemy player
+																	local distance = (hrp.Position - tHrp.Position).Magnitude
+																	if distance <= radius then
+																			ActionCycle(player)
+																			break -- Pauses scanning loop to finish the teleport/respawn cycle cleanly
+																	end
+															end
+													end
+											end
+									end
+							end
+					end)
+			end
+		},
+
 
 }   -- ← end of COMMANDS table
 
@@ -1443,12 +1637,12 @@ end
 lp.Chatted:Connect(onChat)
 
 -- ════════════════════════════════════════════════════════════════════════════
---  KEYBIND  —  RightAlt toggles menu
+--  KEYBIND  —  Home Key toggles menu
 -- ════════════════════════════════════════════════════════════════════════════
 
 UserInputService.InputBegan:Connect(function(inp, gpe)
     if gpe then return end
-    if inp.KeyCode == Enum.KeyCode.RightAlt then
+    if inp.KeyCode == Enum.KeyCode.Home then
         win.Visible = not win.Visible
     end
 end)
