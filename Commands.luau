@@ -603,7 +603,7 @@ end
 local function mkL(parent, text, col, font, tsz, sz, pos, xa, ya, name, zi, wrap)
     local l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
-    l.Text           = text or ""
+    l.Text = tostring(text or "")
     l.TextColor3     = col  or TH.TextPri
     l.Font           = font or Enum.Font.GothamMedium
     l.TextSize       = tsz  or 13
@@ -815,7 +815,7 @@ local function buildList(filter)
         mkL(badge, PREFIX, TH.Accent, Enum.Font.Code, 10,
             UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Enum.TextXAlignment.Center, nil, "PL", 4)
 
-        mkL(row, cmd.name, TH.TextPri, Enum.Font.GothamBold, 13,
+        mkL(row, (type(cmd.name) == "table" and cmd.name[1] or cmd.name), TH.TextPri, Enum.Font.GothamBold, 13,
             UDim2.new(1,-90,0,22), UDim2.new(0,34,0,4), nil, nil, "Name", 3)
         mkL(row, cmd.help, TH.TextSec, Enum.Font.Gotham, 11,
             UDim2.new(1,-90,0,18), UDim2.new(0,34,0,28), nil, nil, "Help", 3)
