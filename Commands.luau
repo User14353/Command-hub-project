@@ -1456,7 +1456,7 @@ mkL(hdr, PREFIX.."<cmd>", TH.TextSec, Enum.Font.Code, 11,
     UDim2.new(0,90,1,0), UDim2.new(1,-180,0,0),
     Enum.TextXAlignment.Right, nil, "Hint", 4)
 
-local closeBtn = mkB(hdr, "✕", Color3.fromHex("#2a1520"), TH.Red,
+local closeBtn = mkB(hdr, "X", Color3.fromHex("#2a1520"), TH.Red,
                      Enum.Font.GothamBold, 13,
                      UDim2.new(0,28,0,28), UDim2.new(1,-36,0,8), "Close", 5, 5)
 makeDraggable(win, hdr)
