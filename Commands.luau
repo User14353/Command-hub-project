@@ -341,7 +341,7 @@ local COMMANDS = {
     },
 
     {
-        name = {"goto", "tp", "teleport"},
+        name = {"goto", "tp", "to"},
         help = "Teleport to a player",
         args = "<name>",
         run = function(args)
@@ -933,7 +933,25 @@ local COMMANDS = {
 			help = "Kill other players",
 			args = "<name>",
 			run = function(args)
+					local q = args:match("^%s*(.-)%s*$"):lower()
+					local target
 
+					for _, p in ipairs(Players:GetPlayers()) do
+							if p ~= lp and (p.Name:lower():find(q,1,true) or p.DisplayName:lower():find(q,1,true)) then
+									target = p
+									break
+							end
+					end
+
+					if not target then notify("Goto", "Not found: "..q); return end
+
+					local hrp = getHRP()
+					local tp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+					if hrp and tp then
+							hrp.CFrame = tp.CFrame + Vector3.new(0,0,0)
+							notify("Goto", "Teleported to "..target.Name)
+					end
 					function GetPlr(name)
 							local plrs = game.Players
 							local lp = plrs.LocalPlayer
