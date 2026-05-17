@@ -1199,9 +1199,21 @@ local COMMANDS = {
 									Tool.Grip = Arm:ToObjectSpace(targethead.CFrame):Inverse()
 									Tool.Parent = char
 
+									-- ✅ LOOP TELEPORT: Sticks you onto the target during the tool grip phase
+									local tpLoopActive = true
+									task.spawn(function()
+											while tpLoopActive and lp.Character == char and targethead and targethead.Parent do
+													hrp.CFrame = targethead.CFrame
+													task.wait()
+											end
+									end)
+
 									repeat
 											task.wait()
 									until not Tool or Tool.Parent == workspace or Tool.Parent == targetchar
+
+									-- ✅ Stop loop right before tool offset and character destruction
+									tpLoopActive = false
 
 									Tool.Grip = Arm:ToObjectSpace(CFrame.new(0, 1e8, 0)):Inverse()
 
