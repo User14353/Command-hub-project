@@ -392,13 +392,26 @@ local COMMANDS = {
         args = "",
         run  = function(_)
             local ok, err = pcall(function()
-                if readfile then loadstring(readfile("ScriptHub.lua"))()
-                else notify("Hub", "Place ScriptHub.lua next to this file.") end
+                if readfile then loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Command-hub-project/refs/heads/main/Script%20hub.luau"))()
+                else notify("Hub", "Script Hub has changed links.") end
             end)
             if not ok then notify("Hub Error", tostring(err):sub(1,80)) end
         end,
     },
 
+    -- ── Animator ───────────────────────────────────────────────────────────────
+    {
+        name = "Animator",
+        help = "Open the Cframe animator",
+        args = "",
+        run  = function(_)
+            local ok, err = pcall(function()
+                if readfile then loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Animator/refs/heads/main/Animator%20Final"))()
+                else notify("Animator", "Cframe Animator has changed links.") end
+            end)
+            if not ok then notify("Animator Error", tostring(err):sub(1,80)) end
+        end,
+    },
     -- ── 16. RESET ─────────────────────────────────────────────────────────────
     {
         name = "reset",
