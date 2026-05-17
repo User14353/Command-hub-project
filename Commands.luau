@@ -783,7 +783,7 @@ local function buildList(filter)
                not cmd.help:lower():find(f,1,true) then continue end
         end
 
-        local row = mkF(scroll, TH.Row, UDim2.new(1,0,0,52), UDim2.new(0,0,0,0), "Row_"..cmd.name, 6, 2)
+        local row = mkF(scroll, TH.Row, UDim2.new(1,0,0,52), UDim2.new(0,0,0,0), "Row_" .. (type(cmd.name) == "table" and cmd.name[1] or cmd.name), 6, 2)
         row.LayoutOrder = i
 
         row.MouseEnter:Connect(function()
