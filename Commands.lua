@@ -414,7 +414,7 @@ local COMMANDS = {
         run = function(_)
             pcall(function()
                 if readfile then
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Animator/refs/heads/main/Animator%20Final"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/User14353/Animator/refs/heads/main/animator30"))()
                 end
             end)
         end,
